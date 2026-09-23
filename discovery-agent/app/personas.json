@@ -1,0 +1,15 @@
+{
+  "_comment": "Demo shoppers. Values mirror databricks-hackathon.fourcast.customer_profile (Shae Smith's interface concept).",
+  "lashawna": {"first_name": "Lashawna", "predicted_ltv": 8580, "avg_order_value": 780, "churn_risk": 0.601,
+               "propensity": 0.32, "loyalty_tier": "bronze", "segment": "at_risk",
+               "history": "Has shopped with us a few times; her last rooms leaned warm and textured (wool, walnut, ceramic)."},
+  "elene":    {"first_name": "Elene", "predicted_ltv": 11053, "avg_order_value": 460, "churn_risk": 0.010,
+               "propensity": 0.82, "loyalty_tier": "platinum", "segment": "loyal",
+               "history": "Has furnished most of her house with us: oak, linen, oat and ivory, a restrained neutral palette."},
+  "neal":     {"first_name": "Neal", "predicted_ltv": 5850, "avg_order_value": 585, "churn_risk": 0.669,
+               "propensity": 0.24, "loyalty_tier": "silver", "segment": "at_risk",
+               "history": "Returning customer, but it has been a while since his last order. Price-conscious."},
+  "rozanne":  {"first_name": "Rozanne", "predicted_ltv": 5297, "avg_order_value": 378, "churn_risk": 0.058,
+               "propensity": 0.86, "loyalty_tier": "bronze", "segment": "new",
+               "history": "New customer, no purchase history yet."}
+}
