@@ -153,14 +153,16 @@ def row(i):
     tags = ", ".join([i["type"], i["category_level_1"], f"room:{i['room']}", f"style:{i['style']}", f"color:{i['color']}",
                       f"material:{i['material']}", f"tier:{i['price_tier']}", "nordhem"])
     plain = re.sub("<[^>]+>", " ", i["description"]); plain = re.sub(r"\s+", " ", plain).strip()
+    sold_out = i["qty"] == 0
     return [i["handle"], i["title"], i["description"], "Nordhem Home", "", i["type"], tags, "TRUE",
-            "Title", "Default Title", i["sku"], random.randint(500, 40000), "shopify", i["qty"], "deny", "manual",
+            "Title", "Default Title", i["sku"], random.randint(500, 40000), "shopify" if sold_out else "",
+            i["qty"], "deny" if sold_out else "continue", "manual",
             f"{i['price']:.2f}", f"{i['compare_at']:.2f}" if i["compare_at"] else "", "TRUE", "TRUE",
             "", "", "", "FALSE", i["title"], plain[:300], "active"]
 
 # Shopify's importer handles ~15MB per file; split into 2 files to keep each import quick
-for part, chunk in enumerate([items[:2500], items[2500:]], 1):
-    with open(f"nordhem_products_part{part}.csv", "w", newline="", encoding="utf-8") as f:
+for name, chunk in [("nordhem_products_all_5000.csv", items)]:
+    with open(name, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f); w.writerow(HEAD)
         for i in chunk: w.writerow(row(i))
 json.dump(items, open("nordhem_catalog_5000.json", "w"), indent=0)
