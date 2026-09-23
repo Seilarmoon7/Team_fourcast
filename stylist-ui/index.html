@@ -216,6 +216,11 @@ body{font-family:var(--sans);background:var(--bg);color:var(--body);overflow:hid
 @media(max-width:520px){ .email{display:none;} .shophead{padding-top:10px;padding-bottom:10px;} .iconbtn{padding:5px 8px;} }
 
 /* unified view additions */
+.cartmail{margin-top:8px;gap:8px;}
+.cartmail input{flex:1;min-width:0;padding:8px 11px;border-radius:9px;border:1px solid #cfe0d9;background:#fff;color:var(--ink);font-family:var(--sans);font-size:13.5px;}
+.cartmail input:focus{outline:2px solid var(--accent-dim);outline-offset:1px;}
+.cartmail button{flex-shrink:0;}
+.cartin button:disabled{opacity:.5;cursor:default;}
 .ghost{display:inline-flex;align-items:center;gap:8px;background:transparent;color:var(--accent);padding:12px 18px;border:1px dashed var(--accent-dim);border-radius:11px;font-family:var(--sans);font-weight:600;font-size:13.5px;margin:0 0 17px 8px;cursor:pointer;animation:rise .32s ease both;}
 .ghost:hover{background:var(--accent-soft);}
 .ghost:disabled{opacity:.5;cursor:default;}
@@ -243,7 +248,11 @@ body{font-family:var(--sans);background:var(--bg);color:var(--body);overflow:hid
 
     <div class="cartbar hidden" id="cartbar"><div class="cartin">
       <span id="cartText"></span><button type="button" id="buy">Check out these</button>
-    </div></div>
+    </div>
+    <form class="cartin cartmail hidden" id="cartMail" autocomplete="on">
+      <input id="cartMailIn" type="email" name="email" placeholder="Email for your order" aria-label="Email for your order" required>
+      <button type="submit">Continue →</button>
+    </form></div>
 
     <div class="bar"><form class="barin" id="f" autocomplete="off">
       <input class="q" id="q" placeholder="Tell me about the room you're working on…" aria-label="Message">
@@ -415,6 +424,7 @@ function renderTrace(tools){
 function renderCart(){
   const n = S.cart.size, total = [...S.cart.values()].reduce((a,p) => a + Number(p.price||0), 0);
   cartbar.classList.toggle('hidden', n === 0);
+  if(n === 0 && typeof cartMail !== 'undefined'){ cartMail.classList.add('hidden'); }
   cartText.textContent = `${n} item${n===1?'':'s'} selected · ${money(total)}`;
   log.querySelectorAll('.card').forEach(c => { const on = S.cart.has(c.dataset.sku); c.classList.toggle('sel', on);
     const b = c.querySelector('.cadd button'); if(b) b.textContent = on ? 'Added ✓' : 'Add to cart'; });
@@ -440,7 +450,7 @@ async function playTools(tools){
 }
 async function send(m){
   m = (m||'').trim(); if(!m || S.busy) return;
-  S.busy = true; sendBtn.disabled = true;
+  S.busy = true; sendBtn.disabled = true; if(typeof buyBtn !== 'undefined') buyBtn.disabled = true;
   const intro = log.querySelector('.intro'); if(intro) intro.remove();
   add('<div class="bub">'+esc(m)+'</div>', 'msg me');
   const t = add('<div class="bub"><div class="typing"><i></i><i></i><i></i></div></div>', 'msg bot');
@@ -489,7 +499,7 @@ async function send(m){
     await wait(350);
   }catch(err){
     t.innerHTML = '<div class="bub err">Something went wrong ('+esc(err.message || err)+'). Please try again.</div>';
-  }finally{ coolAll(); S.busy = false; sendBtn.disabled = false; q.focus(); }
+  }finally{ coolAll(); S.busy = false; sendBtn.disabled = false; if(typeof buyBtn !== 'undefined') buyBtn.disabled = false; q.focus(); }
 }
 
 /* ---------- after the order is paid: Shopify webhook -> Bloomreach journey (Shae's sequence) ---------- */
@@ -554,7 +564,30 @@ Object.entries(SHOPPERS).forEach(([k,s]) => {
 });
 
 $('f').onsubmit = e => { e.preventDefault(); const m = q.value; q.value = ''; send(m); };
-$('buy').onclick = () => send(`I'd like to buy: ${[...S.cart.values()].map(p => `${p.title} (${p.sku})`).join(', ')}. Please create my checkout.`);
+// Checkout: Shopify needs an email, so collect it right here instead of making the agent ask for it
+const cartMail = $('cartMail'), cartMailIn = $('cartMailIn'), buyBtn = $('buy');
+const validEmail = v => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v || '');
+function checkoutNow(){
+  if(!S.cart.size || S.busy) return;
+  const known = S.email || emailEl.value.trim();
+  if(!validEmail(known)){
+    cartMail.classList.remove('hidden'); cartMailIn.value = ''; cartMailIn.focus();
+    buyBtn.textContent = 'Enter email ↓';
+    return;
+  }
+  const items = [...S.cart.values()];
+  cartMail.classList.add('hidden'); buyBtn.disabled = true; buyBtn.textContent = 'Creating checkout…';
+  send(`I'd like to buy: ${items.map(p => `${p.title} (${p.sku})`).join(', ')}. My email is ${known}. Please create my checkout.`)
+    .finally(() => { buyBtn.disabled = false; buyBtn.textContent = 'Check out these'; });
+}
+buyBtn.onclick = checkoutNow;
+cartMail.onsubmit = e => {
+  e.preventDefault();
+  const v = cartMailIn.value.trim();
+  if(!validEmail(v)){ cartMailIn.setCustomValidity('Please enter a valid email'); cartMailIn.reportValidity(); return; }
+  cartMailIn.setCustomValidity(''); emailEl.value = v; store.set('t6email', v); renderRail(); checkoutNow();
+};
+cartMailIn.addEventListener('input', () => cartMailIn.setCustomValidity(''));
 emailEl.addEventListener('change', renderRail);
 
 /* ---------- side panel as a drawer inside the Shopify widget ---------- */
