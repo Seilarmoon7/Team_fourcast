@@ -298,7 +298,7 @@ def test_demo_shopper_profile_drives_tier_and_offer(mocks):
     out = agent.turn(j, "I need to redo my living room")
     p = out["profile"]
     assert p["first_name"] == "Lashawna" and p["value_tier"] == "high" and p["persona"] == "lashawna"
-    assert p["retention_offer"]["code"] == "STAY15" and p["source"] == ["databricks:customer_profile"]
+    assert p["retention_offer"]["code"] == "STAY15" and p["source"] == ["databricks:snapshot"]
     elene = Toolbox(Journey(persona="elene"), agent.shop, agent.br, agent.features, s).get_customer_profile()
     assert elene["value_tier"] == "high" and elene["retention_offer"] is None       # churn 0.01: no code
     neal = Toolbox(Journey(persona="neal"), agent.shop, agent.br, agent.features, s).get_customer_profile()
@@ -318,3 +318,56 @@ def test_shopper_is_fixed_per_conversation(monkeypatch, mocks):
     assert store.load(r1["session_id"]).persona == "neal"
     r3 = c.post("/api/chat", json={"message": "hi", "shopper": "nobody"}).json()
     assert store.load(r3["session_id"]).persona is None
+
+
+DBX = "https://dbc-test.cloud.databricks.com/api/2.0/sql/statements"
+
+
+def test_databricks_customer_profile_lookup(mocks):
+    from app.features import DatabricksFeatures
+    seen = {}
+    def handler(request):
+        seen.update(json.loads(request.content))
+        cols = ["customer_id", "first_name", "predicted_ltv", "avg_order_value", "churn_risk",
+                "purchase_propensity_score", "loyalty_tier", "segment", "marketing_opt_in", "purchases_90d",
+                "days_since_last_purchase", "value_tier", "offer_eligible"]
+        row = ["CUST-0043", "Neal", "5850.0", "585.0", "0.669", "0.24", "silver", "at_risk", "true", "2", "140", "mid", "true"]
+        return httpx.Response(200, json={"status": {"state": "SUCCEEDED"},
+                                         "manifest": {"schema": {"columns": [{"name": c} for c in cols]}},
+                                         "result": {"data_array": [row]}})
+    mocks["router"].post(DBX).mock(side_effect=handler)
+    br = Bloomreach(BR, "tok", "kid", "sec", "rec")
+    f = DatabricksFeatures("dbc-test.cloud.databricks.com", "dapi", "wh1",
+                           "`databricks-hackathon`.fourcast.customer_profile", BloomreachFeatures(br))
+    p = f.get("Neal.Hawkins.0043@example.test")
+    assert seen["parameters"] == [{"name": "email", "value": "neal.hawkins.0043@example.test"}]
+    assert "`databricks-hackathon`.fourcast.customer_profile" in seen["statement"] and seen["warehouse_id"] == "wh1"
+    assert p["predicted_ltv"] == 5850.0 and p["churn_risk"] == 0.669 and p["propensity"] == 0.24
+    assert p["value_tier"] == "mid" and p["orders_count"] == 2 and "databricks" in p["source"]
+
+    s = Settings(retention_discount_code="STAY15")
+    tb = Toolbox(Journey(persona="neal", email="neal.hawkins.0043@example.test"),
+                 ShopifyStorefront(SHOP, s.ucp_agent_profile), br, f, s)
+    prof = tb.get_customer_profile()
+    assert prof["source"] == ["bloomreach", "databricks"] and prof["retention_offer"]["code"] == "STAY15"
+    assert prof["guidance"].startswith("Mid value")
+
+
+def test_databricks_failure_falls_back(mocks):
+    from app.features import DatabricksFeatures
+    mocks["router"].post(DBX).mock(return_value=httpx.Response(200, json={"status": {"state": "FAILED", "error": {"message": "no table"}}}))
+    br = Bloomreach(BR, "tok", "kid", "sec", "rec")
+    f = DatabricksFeatures("dbc-test.cloud.databricks.com", "dapi", "wh1", "t", BloomreachFeatures(br))
+    p = f.get("x@y.co")
+    assert "databricks" not in p["source"] and p.get("predicted_ltv") is None
+
+
+def test_demo_shopper_gets_their_databricks_email(monkeypatch, mocks):
+    from fastapi.testclient import TestClient
+    from app import main
+    agent = make([[types.Part(text="Hi")]])
+    store = MemoryJourneyStore()
+    monkeypatch.setattr(main, "get_agent", lambda: agent)
+    monkeypatch.setattr(main, "get_store", lambda: store)
+    r = TestClient(main.app).post("/api/chat", json={"message": "hi", "shopper": "lashawna"}).json()
+    assert r["email"] == "lashawna.cunningham.0036@example.test"

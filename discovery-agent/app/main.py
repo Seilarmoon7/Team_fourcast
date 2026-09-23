@@ -89,6 +89,8 @@ def chat(body: ChatIn) -> dict:
     if body.shopper and not j.history:          # a shopper is fixed for the whole conversation
         from .agent import PERSONAS
         j.persona = body.shopper if body.shopper in PERSONAS else None
+        if j.persona and not body.email:         # demo shopper = a real customer_profile row, by email
+            j.email = PERSONAS[j.persona]["email"]
     if body.email and not j.email:
         j.email = body.email.strip().lower()
     try:

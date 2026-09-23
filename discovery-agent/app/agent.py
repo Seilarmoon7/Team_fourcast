@@ -29,9 +29,10 @@ HIGH_VALUE_LTV = 8000.0   # value-tier cutoff on predicted LTV
 def value_tier(p: dict) -> dict:
     """How the agent should treat this customer. A policy in code, not left to the model."""
     ltv = p.get("predicted_ltv")
-    if ltv is None:
+    if ltv is None and not p.get("value_tier"):
         return {}
-    if float(ltv) >= HIGH_VALUE_LTV:
+    tier = p.get("value_tier") or ("high" if float(ltv) >= HIGH_VALUE_LTV else "mid")   # Databricks decides if it can
+    if tier == "high":
         return {"value_tier": "high", "guidance": "High value: open with personal premium picks, "
                 "skip budget questions unless they bring it up."}
     return {"value_tier": "mid", "guidance": "Mid value: ask for or respect a budget and show the "
@@ -79,7 +80,7 @@ TOOL_DECLS = [
         "Load what we know about this customer: name, saved style/budget, lifetime value, churn risk, "
         "personalized recommendations and whether a retention offer is available.", {}),
     _fd("save_preferences", "Remember the customer's stated preferences for this and future conversations.", {
-        "room": {"type": "string", "description": "living room, bedroom or garden"},
+        "room": {"type": "string", "description": "living room, bedroom, dining room, home office or garden"},
         "style": {"type": "string", "description": "e.g. scandinavian, boho, minimalist, modern, mid-century, "
                                                    "traditional, industrial, coastal"},
         "budget_max": {"type": "number", "description": "Total budget in USD"},
@@ -88,7 +89,8 @@ TOOL_DECLS = [
         "email": {"type": "string"}}),
     _fd("find_products",
         "Search the live catalog. Returns in-stock products with live Shopify price and SKU.", {
-            "keywords": {"type": "string", "description": "What to look for, e.g. 'sofa', 'rug', 'lamp'"},
+            "keywords": {"type": "string", "description": "What to look for, e.g. 'sofa', 'desk', 'dining chair', "
+                         "'rug', 'floor lamp' (5,000+ items across 43 categories)"},
             "room": {"type": "string"}, "style": {"type": "string"},
             "max_price": {"type": "number", "description": "Max price per item in USD"},
             "limit": {"type": "integer", "description": "1-6, default 4"}}),
@@ -133,13 +135,14 @@ class Toolbox:
     def _profile_data(self) -> dict:
         if self._profile is None:
             persona = PERSONAS.get(self.j.persona or "")
-            if persona:   # demo shopper: Lakehouse customer_profile snapshot
-                self._profile = {"email": self.j.email, "known_customer": True, "orders_count": None,
-                                 "style_preference": None, "budget_max": None, "city": None,
-                                 "recommended_skus": [], **persona,
-                                 "source": ["databricks:customer_profile"]}
-            else:
-                self._profile = self.features.get(self.j.email)
+            self._profile = self.features.get(self.j.email)
+            if persona and "databricks" not in self._profile.get("source", []):
+                # Databricks not configured/reachable: use the offline snapshot of the same row
+                snap = {k: v for k, v in persona.items() if k != "email"}
+                self._profile = {**self._profile, "known_customer": True, **snap,
+                                 "source": self._profile.get("source", []) + ["databricks:snapshot"]}
+            if persona and persona.get("history"):
+                self._profile.setdefault("history", persona["history"])
             self._profile.update(value_tier(self._profile))
         return self._profile
 
@@ -196,7 +199,7 @@ class Toolbox:
         p, offer = self._profile, self._offer()
         keys = ("first_name", "known_customer", "predicted_ltv", "avg_order_value", "churn_risk",
                 "orders_count", "style_preference", "budget_max", "value_tier", "guidance",
-                "loyalty_tier", "segment", "propensity")
+                "loyalty_tier", "segment", "propensity", "customer_id", "days_since_last_purchase")
         return {**{k: p.get(k) for k in keys}, "persona": self.j.persona, "source": list(p.get("source") or []),
                 "retention_offer": offer, "churn_risk_threshold": self.s.churn_risk_threshold}
 

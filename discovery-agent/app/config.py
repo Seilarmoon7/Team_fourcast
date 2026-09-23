@@ -27,7 +27,7 @@ class Settings:
     databricks_host: str = ""
     databricks_token: str = ""
     databricks_warehouse_id: str = ""
-    databricks_features_table: str = "t6.gold.customer_features"
+    databricks_features_table: str = "`databricks-hackathon`.fourcast.customer_profile"
     # Decision policy
     retention_discount_code: str = ""          # e.g. STAYCOZY10, must exist in Shopify Discounts
     churn_risk_threshold: float = 0.6
