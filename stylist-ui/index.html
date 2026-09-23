@@ -137,7 +137,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--body);overflow:hid
 .rail{background:var(--rail);color:var(--rail-ink);display:flex;flex-direction:column;min-height:0;min-width:0;overflow-y:auto;overflow-x:hidden;}
 .railsec{padding:18px 22px;border-bottom:1px solid var(--rail-line);}
 .railsec h4{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:2.2px;text-transform:uppercase;color:var(--rail-muted);margin-bottom:13px;display:flex;justify-content:space-between;align-items:center;}
-.railclose{display:none;background:none;border:0;color:var(--rail-muted);font-size:18px;cursor:pointer;line-height:1;}
+.railclose{display:none;margin:0 0 14px;padding:7px 12px;border-radius:8px;border:1px solid var(--rail-line);background:#2c2823;color:var(--rail-ink);font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;cursor:pointer;}
+.railclose:hover{border-color:var(--accent-dim);color:var(--accent-dim);}
 
 .lamp{display:flex;align-items:center;gap:10px;padding:6px 0;font-size:12.5px;}
 .dot{width:8px;height:8px;border-radius:50%;background:#3d3830;flex-shrink:0;transition:all .3s;}
@@ -202,8 +203,11 @@ body{font-family:var(--sans);background:var(--bg);color:var(--body);overflow:hid
   .app{grid-template-columns:1fr;}
   .rail{position:absolute;top:0;right:0;bottom:0;width:min(344px,92%);transform:translateX(100%);transition:transform .25s ease,visibility .25s;z-index:20;visibility:hidden;}
   .app.railopen .rail{transform:none;visibility:visible;box-shadow:-10px 0 30px rgba(0,0,0,.25);}
+  .app.railopen .shop{filter:brightness(.8);cursor:pointer;}
+  .app.railopen .shop *{pointer-events:none;}
   #railBtn{display:inline-block;}
-  .railclose{display:block;}
+  .railclose{display:inline-block;}
+  .rail .railsec:first-child{padding-top:16px;}
   .shophead,.log,.bar,.cartbar{padding-left:16px;padding-right:16px;}
   .brand span{display:none;}
   .email{width:170px;}
@@ -253,7 +257,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--body);overflow:hid
 
   <aside class="rail" id="rail" aria-label="Behind the scenes">
     <div class="railsec">
-      <h4><span>Platforms · <span id="railMode">live</span></span><button class="railclose" id="railClose" type="button" aria-label="Close">×</button></h4>
+      <button class="railclose" id="railClose" type="button" aria-label="Close panel">← Back to chat</button>
+      <h4><span>Platforms · <span id="railMode">live</span></span></h4>
       <div class="lamp" data-p="google"><span class="dot"></span><span class="lname">Google Gemini</span><span class="lwhat">idle</span></div>
       <div class="lamp" data-p="bloomreach"><span class="dot"></span><span class="lname">Bloomreach</span><span class="lwhat">idle</span></div>
       <div class="lamp" data-p="shopify"><span class="dot"></span><span class="lname">Shopify</span><span class="lwhat">idle</span></div>
@@ -814,7 +819,10 @@ $('mLive').onclick = () => { if(mode!=='live') setMode('live'); };
 $('mDemo').onclick = () => { if(mode!=='demo') setMode('demo'); };
 
 $('railBtn').onclick = () => app.classList.toggle('railopen');
-$('railClose').onclick = () => app.classList.remove('railopen');
+const closeRail = () => app.classList.remove('railopen');
+$('railClose').onclick = closeRail;
+document.querySelector('.shop').addEventListener('click', e => { if(app.classList.contains('railopen')){ e.preventDefault(); e.stopPropagation(); closeRail(); } }, true);
+document.addEventListener('keydown', e => { if(e.key === 'Escape') closeRail(); });
 if(params.get('rail') === '0') app.classList.add('norail');
 
 // When embedded in the Shopify chat widget, offer a full-size view in a new tab.
