@@ -285,7 +285,7 @@ const app=$('app'), scroller=$('scroller'), prof=$('prof'), nurt=$('nurture'), t
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const inlineMd = s => esc(s).replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>').replace(/(^|[^*])\*([^*\n]+)\*/g,'$1<i>$2</i>');
-const md = s => String(s ?? '').trim().split(/\n{2,}/).map(p => '<p>'+inlineMd(p).replace(/\n/g,'<br>')+'</p>').join('');
+const md = s => String(s ?? '').trim().replace(/^[ \t]*[*-][ \t]+/gm, '• ').split(/\n{2,}/).map(p => '<p>'+inlineMd(p).replace(/\n/g,'<br>')+'</p>').join('');
 const wait = ms => new Promise(r => setTimeout(r, ms));
 const money = n => '$' + Number(n).toLocaleString('en-US', {minimumFractionDigits: Number(n) % 1 ? 2 : 0, maximumFractionDigits: 2});
 
