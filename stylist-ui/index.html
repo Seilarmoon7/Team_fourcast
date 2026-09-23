@@ -287,7 +287,7 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt
 const inlineMd = s => esc(s).replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>').replace(/(^|[^*])\*([^*\n]+)\*/g,'$1<i>$2</i>');
 const md = s => String(s ?? '').trim().split(/\n{2,}/).map(p => '<p>'+inlineMd(p).replace(/\n/g,'<br>')+'</p>').join('');
 const wait = ms => new Promise(r => setTimeout(r, ms));
-const money = n => '$' + Number(n).toFixed(Number(n) % 1 ? 2 : 0);
+const money = n => '$' + Number(n).toLocaleString('en-US', {minimumFractionDigits: Number(n) % 1 ? 2 : 0, maximumFractionDigits: 2});
 
 function toBottom(){
   scroller.scrollTop = scroller.scrollHeight;
@@ -321,7 +321,7 @@ function tierBoxes(p){
   const rows = [
     ['Customer', [p.name, p.loyalty].filter(Boolean).join(' · '), true],
     ['Predicted LTV', p.ltv], ['Avg order', p.aov], ['Churn risk', p.churn],
-    ['Propensity', p.propensity ?? p.prop, true], ['Segment', p.segment, true]
+    ['Propensity', p.propensity ?? p.prop, true], ['Segment', p.segment, true], ['Saved taste', p.saved, true]
   ].filter(r => has(r[1]));
   h += rows.map(([k,v,dim]) => `<div class="kv"><span class="k">${k}</span><span class="v${dim?' dim':''}">${esc(v)}</span></div>`).join('');
   return h;
@@ -332,16 +332,20 @@ function tierBoxes(p){
    Response: {session_id, reply, products[], checkout_url, stage, email, tools[{tool,args,ok,n}], profile?}
    ===================================================================== */
 
-// Which platform each agent tool touches. Adjust if the backend changes.
+// Which platform each agent tool touches (mirrors app/agent.py Toolbox).
 const TOOL_MAP = {
-  get_customer_profile: [['bloomreach','customer profile']],
-  save_preferences:     [['bloomreach','save preferences']],
-  find_products:        [['shopify','product search']],
-  create_checkout:      [['shopify','create checkout'],['bloomreach','checkout event']],
+  get_customer_profile: [['bloomreach','profile + recs']],
+  save_preferences:     [['bloomreach','customer properties']],
+  find_products:        [['bloomreach','catalog · view_item'],['shopify','live price + stock']],
+  get_personal_picks:   [['bloomreach','personalized picks'],['shopify','live price + stock']],
+  request_campaign:     [['bloomreach','campaign_request']],
+  create_checkout:      [['shopify','cart permalink'],['bloomreach','cart_update · checkout']],
 };
+const LTV_CUTOFF = 8000;   // value-tier cutoff from Shae's concept (customer_profile)
 function platformsFor(tool){
   if(TOOL_MAP[tool]) return TOOL_MAP[tool];
   const t = tool.toLowerCase(), out = [];
+  if(t === 'databricks_features') return [['databricks','customer_features']];
   if(/databricks|ltv|churn|score|propensity|lakehouse|sql/.test(t)) out.push(['databricks', tool]);
   if(/shopify|checkout|cart|order|inventory|stock/.test(t)) out.push(['shopify', tool]);
   if(/bloomreach|track|event|recommend|segment|consent|preference|profile|journey|email/.test(t)) out.push(['bloomreach', tool]);
@@ -349,10 +353,10 @@ function platformsFor(tool){
 }
 
 const liveLog=$('liveLog'), q=$('q'), sendBtn=$('send'), emailEl=$('email'), cartbar=$('cartbar'), cartText=$('cartText');
-const L = { sid:null, cart:new Map(), stage:null, prefs:{}, profile:null, email:null, turns:0, checkout:null, lastTools:[] };
+const L = { sid:null, cart:new Map(), stage:null, prefs:{}, profile:null, email:null, turns:0, checkout:null, campaign:null, lastTools:[] };
 try { L.sid = sessionStorage.getItem('t6sid'); emailEl.value = sessionStorage.getItem('t6email') || ''; } catch(e){}
 
-const STAGES = [['discovering','Discover'],['recommending','Recommend'],['checkout','Checkout'],['purchased','Nurture']];
+const STAGES = [['discovery','Discover'],['recommending','Recommend'],['checkout','Checkout'],['purchased','Nurture']];
 const JOURNEY = [
   {t:'Day 1', s:'Order confirmed'}, {t:'Day 2', s:'On its way'}, {t:'Day 3', s:'Care guide for what you bought'},
   {t:'Day 4', s:'Two more that finish the room'}, {t:'Day 5', s:'How did it land?'}
@@ -368,12 +372,38 @@ const LIVE_INTRO = `<div class="intro"><span class="ie">Live agent · Gemini × 
     <button type="button">A reading corner for a small apartment</button>
   </div></div>`;
 
+// backend profile (app/agent.py Toolbox.ui_profile) -> Shae's tier/offer panel
+function mapProfile(p){
+  const n = v => (v === null || v === undefined || v === '') ? null : Number(v);
+  const ltv = n(p.predicted_ltv), aov = n(p.avg_order_value), churn = n(p.churn_risk), thr = n(p.churn_risk_threshold) ?? 0.6;
+  const src = (p.source || []).join(' + ') || 'none';
+  const out = { name: p.first_name || (p.known_customer ? 'Known customer' : 'New visitor'), loyalty: src,
+    segment: p.orders_count != null ? p.orders_count + ' orders' : null };
+  if(ltv != null){
+    out.tier = ltv >= LTV_CUTOFF ? 'high' : 'mid';
+    out.why = ltv >= LTV_CUTOFF ? `LTV above the ${LTV_CUTOFF.toLocaleString()} cutoff. Premium picks first.` : 'LTV below the cutoff. Budget-led picks.';
+    out.ltv = money(ltv);
+  }
+  if(aov != null) out.aov = money(aov);
+  if(churn != null){
+    out.churn = churn.toFixed(3);
+    out.offer = !!p.retention_offer;
+    out.offer_code = p.retention_offer ? p.retention_offer.code : '';
+    out.owhy = churn >= thr
+      ? (p.retention_offer ? `Churn ${churn.toFixed(3)} ≥ ${thr}, so the code is attached in code, not by the model.` : `Churn ${churn.toFixed(3)} ≥ ${thr}, but no retention code is configured.`)
+      : `Churn ${churn.toFixed(3)} is below ${thr}. No code.`;
+  }
+  if(p.style_preference) out.saved = '' + p.style_preference + (p.budget_max ? ' · ≤ ' + money(p.budget_max) : '');
+  return out;
+}
+
 function liveRail(){
   $('railMode').textContent = 'live';
   const known = Object.entries(L.prefs).filter(([k,v]) => v !== '' && v != null);
   let h = '';
-  if(L.profile) h += tierBoxes(L.profile);
-  else h += `<div class="offbox no"><div class="ol">Databricks value tier</div><div class="ov">${L.turns?'Not returned yet':'Waiting for first message'}</div><div class="ow">LTV, churn and offer eligibility appear here once the agent returns a <code>profile</code> from customer_profile.</div></div>`;
+  const mp = L.profile ? mapProfile(L.profile) : null;
+  if(mp) h += tierBoxes(mp);
+  if(!mp || mp.ltv == null) h += `<div class="offbox no"><div class="ol">Databricks value tier</div><div class="ov">${!L.turns?'Waiting for first message':!(L.email||emailEl.value)?'Add an email to look up':'No LTV / churn row yet'}</div><div class="ow">Predicted LTV, churn risk and offer eligibility come from the Databricks feature table when FEATURES_BACKEND=databricks.</div></div>`;
   h += `<div class="kv"><span class="k">Email</span><span class="v dim">${esc(L.email || emailEl.value || 'anonymous')}</span></div>`;
   h += `<div class="kv"><span class="k">Session</span><span class="v dim">${esc(L.sid ? L.sid.slice(0,8)+'…' : 'new')}</span></div>`;
   h += known.map(([k,v]) => `<div class="kv"><span class="k">${esc(k.replace(/_/g,' '))}</span><span class="v">${esc(Array.isArray(v)?v.join(', '):typeof v==='object'?JSON.stringify(v):v)}</span></div>`).join('');
@@ -387,11 +417,13 @@ function liveRail(){
   } else {
     n += '<div class="empty">Queued in Bloomreach once an order is paid (Shopify webhook → purchase event).</div>';
   }
+  if(L.campaign) n += `<div class="split" style="margin-top:11px">Agent → Bloomreach campaign_request<br>${esc(L.campaign)}</div>`;
   nurt.innerHTML = n;
   foot.innerHTML = 'Team Fourcast · T6 Full Journey Orchestrator<br>Live agent on Cloud Run · Gemini tool-calling';
 }
 
 function renderTrace(tools){
+  tools = (tools||[]).filter(t => !t.synthetic);
   if(!tools || !tools.length){ trace.innerHTML = '<div class="empty">No tools called this turn.</div>'; return; }
   trace.innerHTML = tools.map(t => {
     const args = t.args && Object.keys(t.args).length ? Object.entries(t.args).map(([k,v]) => k+'='+(typeof v==='object'?JSON.stringify(v):v)).join(' · ') : '';
@@ -457,15 +489,17 @@ async function liveSend(m){
     const tools = Array.isArray(d.tools) ? d.tools : [];
     tools.forEach(x => {
       if(/preference/.test(x.tool) && x.args) Object.assign(L.prefs, x.args);
-      if(/databricks|customer_profile/.test(x.tool) && x.result && typeof x.result==='object') L.profile = x.result;
+      if(x.tool === 'request_campaign' && x.ok && x.args && x.args.goal) L.campaign = x.args.goal;
     });
+    // light Databricks when the profile actually came from the Lakehouse feature table
+    if(d.profile && (d.profile.source||[]).includes('databricks')) tools.splice(tools.findIndex(x => x.tool==='get_customer_profile')+1, 0, {tool:'databricks_features', args:{}, ok:true, n:null, synthetic:true});
 
     await playTools(tools);
     lamps([['google','gemini · reply']], true);
     t.innerHTML = '<div class="bub">'+md(d.reply || '…')+'</div>';
-    if(tools.length){
+    if(tools.some(x => !x.synthetic)){
       const uniq = [];
-      tools.forEach(x => { const k = x.tool+(x.ok?'':'!'); if(!uniq.includes(k)) uniq.push(k); });
+      tools.filter(x => !x.synthetic).forEach(x => { const k = x.tool+(x.ok?'':'!'); if(!uniq.includes(k)) uniq.push(k); });
       addTo(liveLog, 'agent used: ' + uniq.map(k => `<span class="${k.endsWith('!')?'bad':''}">${esc(k.replace('!',' ⚠'))}</span>`).join(''), 'used');
     }
     if(Array.isArray(d.products) && d.products.length) liveCards(d.products);
