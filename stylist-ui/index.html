@@ -1,0 +1,792 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nordhem Home Stylist</title>
+<!--
+  Team Fourcast · T6 Full Journey Orchestrator
+  Combined UI: Shae's interface concept (layout, rail, demo script) + the live agent (/api/chat).
+  Serve this from the same origin as /api/chat (the t6-discovery-agent Cloud Run service).
+  - LIVE mode (default): real Gemini agent; the right rail lights up from the tool calls the API returns.
+  - DEMO mode: Shae's scripted walkthrough with four Databricks-profiled shoppers (for the pitch video).
+  URL flags: ?mode=demo  ?rail=0 (hide rail)  ?api=https://other-host (API base override, needs CORS)
+-->
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+
+:root{
+  --bg:#f7f4ef; --panel:#fff; --ink:#221f1b; --body:#4c473f; --muted:#8a8378;
+  --line:#e6dfd4; --accent:#2f5d50; --accent-soft:#e8f0ed; --accent-dim:#7fb8a4;
+  --gold:#b7791f; --gold-soft:#fdf6e3; --warn:#b4533a;
+  --rail:#221f1b; --rail-ink:#e9e4da; --rail-line:#3a352e; --rail-muted:#8f877b;
+  --mono:'Space Mono',ui-monospace,Menlo,monospace;
+  --sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;}
+body{font-family:var(--sans);background:var(--bg);color:var(--body);overflow:hidden;-webkit-font-smoothing:antialiased;}
+
+.app{display:grid;grid-template-columns:1fr 344px;height:100%;width:100%;overflow:hidden;position:relative;}
+.app.norail{grid-template-columns:1fr;}
+.app.norail .rail{display:none;}
+
+/* ---------- left ---------- */
+.shop{display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden;}
+.shophead{padding:13px 24px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px 14px;flex-wrap:wrap;background:var(--panel);}
+.brand{font-weight:700;font-size:17px;color:var(--ink);white-space:nowrap;}
+.brand span{font-weight:400;color:var(--muted);font-size:12.5px;margin-left:8px;}
+.headr{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:2px;background:var(--bg);}
+.seg button{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;padding:5px 11px;border-radius:999px;border:0;background:transparent;color:var(--muted);cursor:pointer;}
+.seg button.on{background:var(--ink);color:#fff;}
+.email{font-family:var(--sans);font-size:12.5px;padding:6px 11px;border-radius:999px;border:1px solid var(--line);background:var(--bg);color:var(--ink);width:210px;max-width:100%;}
+.email:focus{outline:2px solid var(--accent-dim);outline-offset:1px;}
+.who{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+.who label{font-family:var(--mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-right:2px;}
+.who button{font-family:var(--sans);font-size:12px;font-weight:600;padding:5px 11px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--body);cursor:pointer;transition:all .15s;}
+.who button:hover{border-color:var(--accent-dim);}
+.who button.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+.iconbtn{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--body);cursor:pointer;text-decoration:none;white-space:nowrap;}
+.iconbtn:hover{border-color:var(--accent-dim);color:var(--accent);}
+#railBtn{display:none;}
+.hidden{display:none !important;}
+
+.log{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;padding:22px 24px 8px;scroll-behavior:smooth;}
+.inner{max-width:700px;margin:0 auto;padding-bottom:40px;}
+.msg{margin:0 0 15px;display:flex;}
+.msg.me{justify-content:flex-end;}
+.bub{padding:11px 16px;border-radius:16px;max-width:82%;font-size:15px;line-height:1.55;animation:rise .28s ease both;overflow-wrap:anywhere;}
+.bub p+p{margin-top:8px;}
+.bot .bub{background:var(--panel);border:1px solid var(--line);color:var(--ink);}
+.me .bub{background:var(--accent);color:#fff;}
+.bub.err{border-color:#e5c1b6;background:#fbf1ee;}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+.typing{display:flex;gap:4px;padding:3px 0;}
+.typing i{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:blink 1.2s infinite;}
+.typing i:nth-child(2){animation-delay:.2s}.typing i:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,60%,100%{opacity:.25}30%{opacity:1}}
+
+.used{font-family:var(--mono);font-size:9.5px;letter-spacing:.8px;color:var(--muted);margin:-6px 0 14px;display:flex;flex-wrap:wrap;gap:5px;align-items:center;}
+.used span{border:1px solid var(--line);border-radius:999px;padding:2px 8px;background:var(--panel);}
+.used span.bad{color:var(--warn);border-color:#e5c1b6;}
+
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(152px,1fr));gap:12px;margin:2px 0 17px;animation:rise .32s ease both;}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:13px;overflow:hidden;display:flex;flex-direction:column;transition:border-color .15s,box-shadow .15s;}
+.card.sel{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft);}
+.tile{aspect-ratio:5/4;display:flex;align-items:flex-end;padding:9px;font-family:var(--mono);font-size:9.5px;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,.92);text-shadow:0 1px 3px rgba(0,0,0,.3);}
+.cbody{padding:10px 11px 12px;display:flex;flex-direction:column;gap:3px;flex:1;}
+.cname{font-size:13px;font-weight:600;color:var(--ink);line-height:1.3;}
+.cprice{font-size:14px;font-weight:700;color:var(--ink);}
+.cwhy{font-size:11.5px;color:var(--accent);line-height:1.4;margin-top:3px;}
+.cmeta{font-size:11px;color:var(--muted);}
+.cadd{margin-top:auto;padding-top:8px;}
+.cadd button{width:100%;font-family:var(--sans);font-size:12.5px;font-weight:600;padding:7px 0;border-radius:8px;border:1px solid var(--accent);background:var(--panel);color:var(--accent);cursor:pointer;}
+.card.sel .cadd button{background:var(--accent);color:#fff;}
+
+.offer{background:var(--gold-soft);border:1px solid #e8d9a8;border-left:3px solid var(--gold);border-radius:0 12px 12px 0;padding:13px 16px;margin:0 0 17px;animation:rise .32s ease both;}
+.offer .tag{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold);display:block;margin-bottom:5px;}
+.offer .code{font-family:var(--mono);font-weight:700;font-size:15px;color:var(--ink);}
+.offer p{font-size:13px;margin-top:4px;}
+
+.cta{display:inline-flex;align-items:center;gap:9px;background:var(--accent);color:#fff;padding:13px 22px;border:0;border-radius:11px;font-family:var(--sans);font-weight:600;font-size:14.5px;margin:0 0 17px;cursor:pointer;animation:rise .32s ease both;transition:filter .15s;text-decoration:none;}
+.cta:hover{filter:brightness(1.1);}
+.cta:disabled{opacity:.45;cursor:default;}
+
+.rule{display:flex;align-items:center;gap:14px;margin:8px 0 20px;animation:rise .3s ease both;}
+.rule::before,.rule::after{content:"";height:1px;background:var(--line);flex:1;}
+.rule span{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--accent);white-space:nowrap;}
+
+.mailc{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:13px 16px;margin:0 0 10px;display:flex;gap:14px;align-items:flex-start;animation:rise .35s ease both;}
+.mailc .ic{width:30px;height:30px;border-radius:8px;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+.mailc .mb{flex:1;min-width:0;}
+.mailc .ms{font-size:14px;font-weight:600;color:var(--ink);line-height:1.35;}
+.mailc .mp{font-size:12.5px;color:var(--muted);margin-top:2px;line-height:1.45;}
+.mailc .mt{font-family:var(--mono);font-size:9.5px;letter-spacing:1px;color:var(--muted);flex-shrink:0;padding-top:3px;}
+
+.cartbar{flex:0 0 auto;background:var(--accent-soft);border-top:1px solid #cfe0d9;padding:9px 24px;}
+.cartin{max-width:700px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:13.5px;color:var(--accent);font-weight:600;}
+.cartin button{font-family:var(--sans);font-size:13px;font-weight:600;padding:7px 14px;border-radius:9px;border:0;background:var(--accent);color:#fff;cursor:pointer;}
+
+.bar{flex:0 0 auto;border-top:1px solid var(--line);background:var(--panel);padding:13px 24px 15px;}
+.barin{max-width:700px;margin:0 auto;display:flex;gap:10px;align-items:center;position:relative;}
+.q{flex:1;min-width:0;padding:12px 15px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-size:14.5px;font-family:var(--sans);}
+.q:focus{outline:2px solid var(--accent-dim);outline-offset:1px;}
+.fake{flex:1;min-width:0;padding:12px 15px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--muted);font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.drive{padding:12px 22px;border:0;border-radius:12px;background:var(--ink);color:#fff;font-weight:600;font-size:14px;cursor:pointer;white-space:nowrap;font-family:var(--sans);}
+.drive:disabled{opacity:.3;cursor:default;}
+
+.intro{background:var(--panel);border:1px dashed #d9d0c2;border-radius:14px;padding:20px 22px;animation:rise .4s ease both;margin-bottom:16px;}
+.intro .ie{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:2.2px;text-transform:uppercase;color:var(--accent);display:block;margin-bottom:9px;}
+.intro h3{font-size:19px;font-weight:700;color:var(--ink);letter-spacing:-.2px;margin-bottom:9px;}
+.intro p{font-size:14px;line-height:1.6;margin:0;}
+.intro p+p{margin-top:5px;}
+.intro b{color:var(--ink);font-weight:600;}
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:13px;}
+.chips button{font-family:var(--sans);font-size:12.5px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer;}
+.chips button:hover{border-color:var(--accent-dim);color:var(--accent);}
+
+.hint{position:absolute;right:6px;bottom:calc(100% + 13px);display:flex;flex-direction:column;align-items:center;pointer-events:none;animation:bob 1.7s ease-in-out infinite;}
+.hint span{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;background:var(--ink);color:#fff;padding:5px 11px;border-radius:7px;white-space:nowrap;}
+.hint i{width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid var(--ink);}
+.hint.gone{display:none;}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}
+
+/* ---------- rail ---------- */
+.rail{background:var(--rail);color:var(--rail-ink);display:flex;flex-direction:column;min-height:0;min-width:0;overflow-y:auto;overflow-x:hidden;}
+.railsec{padding:18px 22px;border-bottom:1px solid var(--rail-line);}
+.railsec h4{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:2.2px;text-transform:uppercase;color:var(--rail-muted);margin-bottom:13px;display:flex;justify-content:space-between;align-items:center;}
+.railclose{display:none;background:none;border:0;color:var(--rail-muted);font-size:18px;cursor:pointer;line-height:1;}
+
+.lamp{display:flex;align-items:center;gap:10px;padding:6px 0;font-size:12.5px;}
+.dot{width:8px;height:8px;border-radius:50%;background:#3d3830;flex-shrink:0;transition:all .3s;}
+.lamp.hot .dot{background:var(--accent-dim);box-shadow:0 0 0 4px rgba(127,184,164,.18);}
+.lamp.hot{color:#fff;}
+.lamp.seen .dot{background:#5b7f72;}
+.lname{font-weight:600;flex:1;}
+.lwhat{font-family:var(--mono);font-size:9.5px;color:var(--rail-muted);text-align:right;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.lamp.hot .lwhat{color:var(--accent-dim);}
+
+.tierbox{border-radius:11px;padding:13px 15px;margin-bottom:13px;animation:rise .35s ease both;}
+.tierbox.high{background:rgba(127,184,164,.13);border:1px solid rgba(127,184,164,.35);}
+.tierbox.mid{background:rgba(143,135,123,.1);border:1px solid rgba(143,135,123,.28);}
+.tierbox .tl{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--rail-muted);}
+.tierbox .tv{font-size:19px;font-weight:700;margin-top:3px;letter-spacing:-.3px;}
+.tierbox.high .tv{color:var(--accent-dim);}
+.tierbox.mid .tv{color:#b8b0a4;}
+.tierbox .tw{font-size:11.5px;color:var(--rail-muted);margin-top:5px;line-height:1.5;}
+
+.offbox{border-radius:11px;padding:11px 14px;margin-bottom:13px;animation:rise .35s ease both;}
+.offbox.yes{background:rgba(183,121,31,.15);border:1px solid rgba(224,176,99,.35);}
+.offbox.no{background:rgba(143,135,123,.08);border:1px solid var(--rail-line);}
+.offbox .ol{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--rail-muted);}
+.offbox .ov{font-size:14px;font-weight:700;margin-top:3px;}
+.offbox.yes .ov{color:#e0b063;}
+.offbox.no .ov{color:var(--rail-muted);}
+.offbox .ow{font-size:11px;color:var(--rail-muted);margin-top:4px;line-height:1.45;}
+
+.kv{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:7px 0;border-bottom:1px solid var(--rail-line);font-size:12.5px;}
+.kv:last-child{border-bottom:0;}
+.kv .k{font-family:var(--mono);font-size:9.5px;letter-spacing:1.4px;text-transform:uppercase;color:var(--rail-muted);flex-shrink:0;}
+.kv .v{font-weight:700;color:#fff;font-size:13px;text-align:right;overflow-wrap:anywhere;}
+.kv .v.dim{color:var(--rail-muted);font-weight:400;}
+
+.empty{font-size:12px;color:var(--rail-muted);line-height:1.6;font-style:italic;}
+
+.stages{display:flex;gap:4px;margin-bottom:12px;}
+.stages span{flex:1;font-family:var(--mono);font-size:8.5px;letter-spacing:.8px;text-transform:uppercase;text-align:center;padding:6px 2px;border-radius:6px;background:#2c2823;color:var(--rail-muted);transition:all .3s;}
+.stages span.on{background:rgba(127,184,164,.18);color:var(--accent-dim);}
+.stages span.now{background:var(--accent-dim);color:var(--rail);font-weight:700;}
+
+.trace{font-family:var(--mono);font-size:10px;line-height:1.5;}
+.trace div{padding:5px 0;border-bottom:1px dashed var(--rail-line);display:flex;gap:8px;}
+.trace div:last-child{border-bottom:0;}
+.trace b{color:#fff;font-weight:700;flex-shrink:0;}
+.trace em{font-style:normal;color:var(--rail-muted);overflow-wrap:anywhere;}
+.trace .bad b{color:#e39b85;}
+
+.jrow{display:flex;gap:10px;align-items:center;padding:7px 0;font-size:12px;opacity:.28;transition:opacity .45s;}
+.jrow.on{opacity:1;}
+.jrow.queued{opacity:.7;}
+.jn{font-family:var(--mono);font-size:9px;color:var(--rail-muted);width:12px;flex-shrink:0;}
+.js{flex:1;line-height:1.35;}
+.jt{font-family:var(--mono);font-size:8.5px;letter-spacing:.8px;text-transform:uppercase;color:var(--rail-muted);flex-shrink:0;}
+.jrow.on .jt{color:var(--accent-dim);}
+.split{font-family:var(--mono);font-size:9.5px;letter-spacing:1px;color:var(--accent-dim);background:rgba(127,184,164,.1);border-radius:7px;padding:8px 11px;margin-bottom:11px;line-height:1.5;}
+
+.foot{padding:15px 22px;font-family:var(--mono);font-size:8.5px;letter-spacing:1.3px;text-transform:uppercase;color:#6a6358;line-height:1.8;margin-top:auto;}
+
+/* narrow (Shopify chat widget, phones): rail becomes a slide-over drawer */
+@media(max-width:900px){
+  .app{grid-template-columns:1fr;}
+  .rail{position:absolute;top:0;right:0;bottom:0;width:min(344px,92%);transform:translateX(100%);transition:transform .25s ease,visibility .25s;z-index:20;visibility:hidden;}
+  .app.railopen .rail{transform:none;visibility:visible;box-shadow:-10px 0 30px rgba(0,0,0,.25);}
+  #railBtn{display:inline-block;}
+  .railclose{display:block;}
+  .shophead,.log,.bar,.cartbar{padding-left:16px;padding-right:16px;}
+  .brand span{display:none;}
+  .email{width:170px;}
+}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+
+  <div class="shop">
+    <div class="shophead">
+      <div class="brand">Nordhem Home <span>AI stylist</span></div>
+      <div class="headr">
+        <input class="email" id="email" type="email" placeholder="you@example.com (optional)" aria-label="Your email">
+        <div class="who hidden" id="who"><label>Shopper</label></div>
+        <div class="seg" role="tablist" aria-label="Mode">
+          <button id="mLive" class="on" type="button">Live</button>
+          <button id="mDemo" type="button">Demo</button>
+        </div>
+        <button class="iconbtn" id="railBtn" type="button">Behind the scenes</button>
+        <a class="iconbtn hidden" id="fullBtn" target="_blank" rel="noopener">Full view ↗</a>
+      </div>
+    </div>
+
+    <div class="log" id="scroller">
+      <div class="inner" id="liveLog"></div>
+      <div class="inner hidden" id="demoLog"></div>
+    </div>
+
+    <div class="cartbar hidden" id="cartbar"><div class="cartin">
+      <span id="cartText"></span><button type="button" id="buy">Check out these</button>
+    </div></div>
+
+    <div class="bar" id="liveBar"><form class="barin" id="f" autocomplete="off">
+      <input class="q" id="q" placeholder="Tell me about the room you're working on…" aria-label="Message">
+      <button class="drive" id="send" type="submit">Send</button>
+    </form></div>
+
+    <div class="bar hidden" id="demoBar"><div class="barin">
+      <div class="hint" id="hint"><span>Start here</span><i></i></div>
+      <div class="fake" id="fake">Tell me about the room you're working on…</div>
+      <button class="drive" id="drive" type="button">Start</button>
+    </div></div>
+  </div>
+
+  <aside class="rail" id="rail" aria-label="Behind the scenes">
+    <div class="railsec">
+      <h4><span>Platforms · <span id="railMode">live</span></span><button class="railclose" id="railClose" type="button" aria-label="Close">×</button></h4>
+      <div class="lamp" data-p="google"><span class="dot"></span><span class="lname">Google Gemini</span><span class="lwhat">idle</span></div>
+      <div class="lamp" data-p="bloomreach"><span class="dot"></span><span class="lname">Bloomreach</span><span class="lwhat">idle</span></div>
+      <div class="lamp" data-p="shopify"><span class="dot"></span><span class="lname">Shopify</span><span class="lwhat">idle</span></div>
+      <div class="lamp" data-p="databricks"><span class="dot"></span><span class="lname">Databricks</span><span class="lwhat">idle</span></div>
+    </div>
+    <div class="railsec">
+      <h4>Customer profile</h4>
+      <div id="prof"></div>
+    </div>
+    <div class="railsec" id="traceSec">
+      <h4>Agent tool calls · last turn</h4>
+      <div class="trace" id="trace"><div class="empty">Nothing yet.</div></div>
+    </div>
+    <div class="railsec">
+      <h4>Post-purchase journey</h4>
+      <div id="nurture"></div>
+    </div>
+    <div class="foot" id="foot"></div>
+  </aside>
+
+</div>
+
+<script>
+/* =====================================================================
+   Shared helpers
+   ===================================================================== */
+const $ = id => document.getElementById(id);
+const params = new URLSearchParams(location.search);
+const API = (params.get('api') || '').replace(/\/$/, '');
+const app=$('app'), scroller=$('scroller'), prof=$('prof'), nurt=$('nurture'), trace=$('trace'), foot=$('foot');
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const inlineMd = s => esc(s).replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>').replace(/(^|[^*])\*([^*\n]+)\*/g,'$1<i>$2</i>');
+const md = s => String(s ?? '').trim().split(/\n{2,}/).map(p => '<p>'+inlineMd(p).replace(/\n/g,'<br>')+'</p>').join('');
+const wait = ms => new Promise(r => setTimeout(r, ms));
+const money = n => '$' + Number(n).toFixed(Number(n) % 1 ? 2 : 0);
+
+function toBottom(){
+  scroller.scrollTop = scroller.scrollHeight;
+  requestAnimationFrame(() => { scroller.scrollTop = scroller.scrollHeight; });
+  setTimeout(() => { scroller.scrollTop = scroller.scrollHeight; }, 340);
+}
+function addTo(log, html, cls){ const d=document.createElement('div'); if(cls) d.className=cls; d.innerHTML=html; log.appendChild(d); toBottom(); return d; }
+
+function lamps(list, on){
+  (list||[]).forEach(([p, what]) => {
+    const el = document.querySelector('.lamp[data-p="'+p+'"]'); if(!el) return;
+    el.classList.toggle('hot', on);
+    if(on) el.classList.add('seen');
+    el.querySelector('.lwhat').textContent = on ? what : (el.dataset.last || 'idle');
+    if(on) el.dataset.last = what;
+  });
+}
+function coolAll(){ document.querySelectorAll('.lamp').forEach(l => { l.classList.remove('hot'); l.querySelector('.lwhat').textContent = l.dataset.last || 'idle'; }); }
+function resetLamps(){ document.querySelectorAll('.lamp').forEach(l => { l.classList.remove('hot','seen'); delete l.dataset.last; l.querySelector('.lwhat').textContent='idle'; }); }
+
+const COLORS={walnut:'#6b4a33',oak:'#b08a5a',white:'#c9c2b6',black:'#3a3836',grey:'#8a8a86',gray:'#8a8a86',beige:'#bda98c',cream:'#cbbf9f',green:'#5e7d5a',blue:'#4d6a8a',navy:'#34465e',pink:'#c98b95',red:'#a5503f',terracotta:'#b86a4b',brass:'#a88a45',natural:'#a89272',rattan:'#a8864f',teal:'#3f7773',mustard:'#b8932f',yellow:'#c2a13a',brown:'#7a5a40',ivory:'#c7bda6',charcoal:'#4a4845',sage:'#8a9d7e',rust:'#9c5a3c',oat:'#bda98c',linen:'#bda98c'};
+const tone = c => { c=(c||'').toLowerCase(); for(const k in COLORS) if(c.includes(k)) return COLORS[k]; let h=0; for(const ch of c) h=(h*31+ch.charCodeAt(0))%360; return `hsl(${h} 25% 45%)`; };
+
+function tierBoxes(p){
+  // p: {tier, why, offer, offer_code, owhy, name, loyalty, ltv, aov, churn, propensity, segment}
+  const high = String(p.tier||'').toLowerCase().startsWith('high');
+  const has = v => v !== undefined && v !== null && v !== '';
+  let h = '';
+  if(has(p.tier)) h += `<div class="tierbox ${high?'high':'mid'}"><div class="tl">Value tier</div><div class="tv">${esc(String(p.tier).toUpperCase())}${/value/i.test(p.tier)?'':' VALUE'}</div>${p.why?`<div class="tw">${esc(p.why)}</div>`:''}</div>`;
+  if(has(p.offer)) h += `<div class="offbox ${p.offer?'yes':'no'}"><div class="ol">Retention offer</div><div class="ov">${p.offer?'ELIGIBLE'+(p.offer_code?' · '+esc(p.offer_code):''):'NOT ELIGIBLE'}</div>${p.owhy?`<div class="ow">${esc(p.owhy)}</div>`:''}</div>`;
+  const rows = [
+    ['Customer', [p.name, p.loyalty].filter(Boolean).join(' · '), true],
+    ['Predicted LTV', p.ltv], ['Avg order', p.aov], ['Churn risk', p.churn],
+    ['Propensity', p.propensity ?? p.prop, true], ['Segment', p.segment, true]
+  ].filter(r => has(r[1]));
+  h += rows.map(([k,v,dim]) => `<div class="kv"><span class="k">${k}</span><span class="v${dim?' dim':''}">${esc(v)}</span></div>`).join('');
+  return h;
+}
+
+/* =====================================================================
+   LIVE MODE  — talks to the real agent at POST {API}/api/chat
+   Response: {session_id, reply, products[], checkout_url, stage, email, tools[{tool,args,ok,n}], profile?}
+   ===================================================================== */
+
+// Which platform each agent tool touches. Adjust if the backend changes.
+const TOOL_MAP = {
+  get_customer_profile: [['bloomreach','customer profile']],
+  save_preferences:     [['bloomreach','save preferences']],
+  find_products:        [['shopify','product search']],
+  create_checkout:      [['shopify','create checkout'],['bloomreach','checkout event']],
+};
+function platformsFor(tool){
+  if(TOOL_MAP[tool]) return TOOL_MAP[tool];
+  const t = tool.toLowerCase(), out = [];
+  if(/databricks|ltv|churn|score|propensity|lakehouse|sql/.test(t)) out.push(['databricks', tool]);
+  if(/shopify|checkout|cart|order|inventory|stock/.test(t)) out.push(['shopify', tool]);
+  if(/bloomreach|track|event|recommend|segment|consent|preference|profile|journey|email/.test(t)) out.push(['bloomreach', tool]);
+  return out.length ? out : [['google', tool]];
+}
+
+const liveLog=$('liveLog'), q=$('q'), sendBtn=$('send'), emailEl=$('email'), cartbar=$('cartbar'), cartText=$('cartText');
+const L = { sid:null, cart:new Map(), stage:null, prefs:{}, profile:null, email:null, turns:0, checkout:null, lastTools:[] };
+try { L.sid = sessionStorage.getItem('t6sid'); emailEl.value = sessionStorage.getItem('t6email') || ''; } catch(e){}
+
+const STAGES = [['discovering','Discover'],['recommending','Recommend'],['checkout','Checkout'],['purchased','Nurture']];
+const JOURNEY = [
+  {t:'Day 1', s:'Order confirmed'}, {t:'Day 2', s:'On its way'}, {t:'Day 3', s:'Care guide for what you bought'},
+  {t:'Day 4', s:'Two more that finish the room'}, {t:'Day 5', s:'How did it land?'}
+];
+
+const LIVE_INTRO = `<div class="intro"><span class="ie">Live agent · Gemini × Bloomreach × Shopify × Databricks</span>
+  <h3>Tell me about the room</h3>
+  <p>Describe a room, a style or a budget and I'll put together pieces you can buy right here.</p>
+  <p>The dark panel shows <b>what each platform is doing</b> as the agent works.</p>
+  <div class="chips">
+    <button type="button">I need to redo my living room, it feels cold</button>
+    <button type="button">Scandinavian bedroom under $500</button>
+    <button type="button">A reading corner for a small apartment</button>
+  </div></div>`;
+
+function liveRail(){
+  $('railMode').textContent = 'live';
+  const known = Object.entries(L.prefs).filter(([k,v]) => v !== '' && v != null);
+  let h = '';
+  if(L.profile) h += tierBoxes(L.profile);
+  else h += `<div class="offbox no"><div class="ol">Databricks value tier</div><div class="ov">${L.turns?'Not returned yet':'Waiting for first message'}</div><div class="ow">LTV, churn and offer eligibility appear here once the agent returns a <code>profile</code> from customer_profile.</div></div>`;
+  h += `<div class="kv"><span class="k">Email</span><span class="v dim">${esc(L.email || emailEl.value || 'anonymous')}</span></div>`;
+  h += `<div class="kv"><span class="k">Session</span><span class="v dim">${esc(L.sid ? L.sid.slice(0,8)+'…' : 'new')}</span></div>`;
+  h += known.map(([k,v]) => `<div class="kv"><span class="k">${esc(k.replace(/_/g,' '))}</span><span class="v">${esc(Array.isArray(v)?v.join(', '):typeof v==='object'?JSON.stringify(v):v)}</span></div>`).join('');
+  prof.innerHTML = h;
+
+  const idx = STAGES.findIndex(s => s[0] === L.stage);
+  let n = '<div class="stages">' + STAGES.map(([k,label],i) => `<span class="${i===idx?'now':i<idx?'on':''}">${label}</span>`).join('') + '</div>';
+  if(L.checkout){
+    n += '<div class="split">Starts when Shopify reports the order paid · 90% journey · 10% holdout</div>'
+      + JOURNEY.map((m,i) => `<div class="jrow queued"><span class="jn">${i+1}</span><span class="js">${esc(m.s)}</span><span class="jt">${esc(m.t)}</span></div>`).join('');
+  } else {
+    n += '<div class="empty">Queued in Bloomreach once an order is paid (Shopify webhook → purchase event).</div>';
+  }
+  nurt.innerHTML = n;
+  foot.innerHTML = 'Team Fourcast · T6 Full Journey Orchestrator<br>Live agent on Cloud Run · Gemini tool-calling';
+}
+
+function renderTrace(tools){
+  if(!tools || !tools.length){ trace.innerHTML = '<div class="empty">No tools called this turn.</div>'; return; }
+  trace.innerHTML = tools.map(t => {
+    const args = t.args && Object.keys(t.args).length ? Object.entries(t.args).map(([k,v]) => k+'='+(typeof v==='object'?JSON.stringify(v):v)).join(' · ') : '';
+    const res = t.n != null ? ` → ${t.n}` : '';
+    return `<div class="${t.ok?'':'bad'}"><b>${esc(t.tool)}${t.ok?'':' ⚠'}</b><em>${esc(args)}${esc(res)}</em></div>`;
+  }).join('');
+}
+
+function renderCart(){
+  const n = L.cart.size;
+  cartbar.classList.toggle('hidden', n === 0 || mode !== 'live');
+  const total = [...L.cart.values()].reduce((a,p) => a + Number(p.price||0), 0);
+  cartText.textContent = `${n} item${n===1?'':'s'} selected · ${money(total)}`;
+  liveLog.querySelectorAll('.card').forEach(c => {
+    const on = L.cart.has(c.dataset.sku);
+    c.classList.toggle('sel', on);
+    const b = c.querySelector('.cadd button'); if(b) b.textContent = on ? 'Added ✓' : 'Add to cart';
+  });
+}
+
+function liveCards(products){
+  const box = addTo(liveLog, products.map(p => `<div class="card" data-sku="${esc(p.sku)}">
+      <div class="tile" style="background:${tone(p.color||p.material)}">${esc([p.material,p.color].filter(Boolean).join(' · '))}</div>
+      <div class="cbody"><span class="cprice">${money(p.price)}</span><span class="cname">${esc(p.title)}</span>
+      ${p.why?`<span class="cwhy">${esc(p.why)}</span>`:''}
+      <span class="cmeta">${esc([p.style,p.room].filter(Boolean).join(' · '))}</span>
+      <div class="cadd"><button type="button">Add to cart</button></div></div></div>`).join(''), 'cards');
+  box.querySelectorAll('.card').forEach((el,i) => {
+    el.querySelector('.cadd button').onclick = () => { const p = products[i]; L.cart.has(p.sku) ? L.cart.delete(p.sku) : L.cart.set(p.sku, p); renderCart(); };
+  });
+  renderCart();
+}
+
+async function playTools(tools){
+  for(const t of tools){
+    const ps = platformsFor(t.tool);
+    lamps(ps, true);
+    await wait(170);
+    ps.forEach(([p]) => { const el=document.querySelector('.lamp[data-p="'+p+'"]'); if(el) el.classList.remove('hot'); });
+  }
+}
+
+let liveBusy = false;
+async function liveSend(m){
+  m = (m||'').trim(); if(!m || liveBusy) return;
+  liveBusy = true; sendBtn.disabled = true;
+  const intro = liveLog.querySelector('.intro'); if(intro) intro.remove();
+  addTo(liveLog, '<div class="bub">'+esc(m)+'</div>', 'msg me');
+  const t = addTo(liveLog, '<div class="bub"><div class="typing"><i></i><i></i><i></i></div></div>', 'msg bot');
+  lamps([['google','gemini · thinking']], true);
+  try{
+    const email = emailEl.value.trim() || null;
+    const r = await fetch(API + '/api/chat', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({message:m, session_id:L.sid, email})});
+    let d; try { d = await r.json(); } catch(e){ d = {}; }
+    if(!r.ok) throw new Error(d.detail || ('HTTP '+r.status));
+    L.turns++;
+    L.sid = d.session_id || L.sid;
+    if(d.email){ L.email = d.email; if(!emailEl.value) emailEl.value = d.email; }
+    try { sessionStorage.setItem('t6sid', L.sid); if(emailEl.value) sessionStorage.setItem('t6email', emailEl.value); } catch(e){}
+    if(d.stage) L.stage = d.stage;
+    if(d.profile && typeof d.profile === 'object') L.profile = d.profile;
+    const tools = Array.isArray(d.tools) ? d.tools : [];
+    tools.forEach(x => {
+      if(/preference/.test(x.tool) && x.args) Object.assign(L.prefs, x.args);
+      if(/databricks|customer_profile/.test(x.tool) && x.result && typeof x.result==='object') L.profile = x.result;
+    });
+
+    await playTools(tools);
+    lamps([['google','gemini · reply']], true);
+    t.innerHTML = '<div class="bub">'+md(d.reply || '…')+'</div>';
+    if(tools.length){
+      const uniq = [];
+      tools.forEach(x => { const k = x.tool+(x.ok?'':'!'); if(!uniq.includes(k)) uniq.push(k); });
+      addTo(liveLog, 'agent used: ' + uniq.map(k => `<span class="${k.endsWith('!')?'bad':''}">${esc(k.replace('!',' ⚠'))}</span>`).join(''), 'used');
+    }
+    if(Array.isArray(d.products) && d.products.length) liveCards(d.products);
+    if(d.offer && (d.offer.code || d.offer.text)){
+      addTo(liveLog, '<span class="tag">Retention offer · enforced in SQL, not by the model</span>'
+        + (d.offer.code?'<span class="code">'+esc(d.offer.code)+'</span>':'') + (d.offer.text?'<p>'+esc(d.offer.text)+'</p>':''), 'offer');
+    }
+    if(d.checkout_url){
+      L.checkout = d.checkout_url;
+      const a = document.createElement('a');
+      a.className = 'cta'; a.href = d.checkout_url; a.target = '_top'; a.rel = 'noopener';
+      a.textContent = 'Go to checkout →';
+      a.onclick = () => { try { window.top.location.href = d.checkout_url; return false; } catch(e){ a.target = '_blank'; return true; } };
+      liveLog.appendChild(a); toBottom();
+      L.cart.clear(); renderCart();
+    }
+    L.lastTools = tools;
+    renderTrace(tools);
+    liveRail();
+    await wait(400);
+  }catch(err){
+    t.innerHTML = '<div class="bub err">Something went wrong ('+esc(err.message || err)+'). Please try again.</div>';
+  }finally{
+    coolAll();
+    liveBusy = false; sendBtn.disabled = false; q.focus();
+  }
+}
+
+$('f').onsubmit = e => { e.preventDefault(); const m = q.value; q.value = ''; liveSend(m); };
+$('buy').onclick = () => {
+  const items = [...L.cart.values()].map(p => `${p.title} (${p.sku})`).join(', ');
+  liveSend(`I'd like to buy: ${items}. Please create my checkout.`);
+};
+emailEl.addEventListener('change', () => { try { sessionStorage.setItem('t6email', emailEl.value); } catch(e){} if(mode==='live') liveRail(); });
+
+function liveInit(){
+  liveLog.innerHTML = LIVE_INTRO;
+  liveLog.querySelectorAll('.chips button').forEach(b => b.onclick = () => liveSend(b.textContent));
+}
+
+/* =====================================================================
+   DEMO MODE — Shae Smith's scripted interface concept (unchanged story)
+   Profile values mirror databricks-hackathon.fourcast.customer_profile
+   ===================================================================== */
+const P = {
+  lashawna:{
+    name:'Lashawna', ltv:'$8,580', aov:'$780', churn:'0.601', prop:'0.32',
+    tier:'high', offer:true, loyalty:'bronze', segment:'at_risk',
+    why:'LTV above the 8,000 cutoff. Premium picks, no budget questions.',
+    owhy:'Churn 0.601 is at or above 0.6, so a code is attached in SQL.',
+    bought:'Fjord Wool Rug', total:'$1,309', order:'#1006',
+    script:[
+      {me:"I need to redo my living room"},
+      {tools:[['google','gemini 3 flash'],['databricks','customer_profile']], profile:true,
+       bot:"Welcome back, Lashawna. You've shopped with us a few times, and your last rooms leaned warm and textured. Want me to work from that, or are we going somewhere new?"},
+      {me:"same direction, but the room feels cold"},
+      {tools:[['bloomreach','recommendations'],['shopify','stock + price']],
+       bot:"Then we're adding warmth, not furniture. Three pieces that do most of the work:",
+       products:[
+         {n:'Halden Walnut Sideboard',p:'$680',c:'#6b4a33',m:'walnut · oiled',w:'Anchors the wall and warms the room'},
+         {n:'Fjord Wool Rug, 6×9',p:'$540',c:'#9c7a52',m:'wool · rust',w:'Largest surface, biggest shift'},
+         {n:'Ostra Ceramic Lamp',p:'$320',c:'#c2a884',m:'ceramic · cream',w:'Low warm light instead of overhead'}
+       ],
+       offer:{code:'STAY15', text:"And because you've been with us a while, I've applied 15% to this order."}},
+      {me:"let's do all three"},
+      {tools:[['shopify','create checkout'],['bloomreach','cart event']],
+       bot:"Done. $1,540 before the discount, **$1,309** after. Your details are already filled in.",
+       checkout:true}
+    ]
+  },
+  elene:{
+    name:'Elene', ltv:'$11,053', aov:'$460', churn:'0.010', prop:'0.82',
+    tier:'high', offer:false, loyalty:'platinum', segment:'loyal',
+    why:'LTV above the cutoff. Skips discovery, opens with personal picks.',
+    owhy:'Churn 0.010 is below 0.6. No code, regardless of how much she spends.',
+    bought:'Brann Linen Armchair', total:'$730', order:'#1007',
+    script:[
+      {me:"I need to redo my living room"},
+      {tools:[['google','gemini 3 flash'],['databricks','customer_profile']], profile:true,
+       bot:"Good to see you again, Elene. You've built most of this house with us, so I'll skip the questionnaire. Same restrained palette as the bedroom, or are we loosening up?"},
+      {me:"same palette"},
+      {tools:[['bloomreach','recommendations'],['shopify','stock + price']],
+       bot:"Three that sit with what you already own:",
+       products:[
+         {n:'Vika Oak Coffee Table',p:'$495',c:'#b08a5a',m:'white oak',w:'Matches the bedroom dresser grain'},
+         {n:'Brann Linen Armchair',p:'$620',c:'#bda98c',m:'linen · oat',w:'Same weave as your dining chairs'},
+         {n:'Nord Bouclé Throw',p:'$110',c:'#cbbf9f',m:'bouclé · ivory',w:'The small warm thing the room lacks'}
+       ]},
+      {me:"the chair and the throw"},
+      {tools:[['shopify','create checkout'],['bloomreach','cart event']],
+       bot:"$730 total, ready when you are. No code needed, your tier pricing is already on it.",
+       checkout:true}
+    ]
+  },
+  neal:{
+    name:'Neal', ltv:'$5,850', aov:'$585', churn:'0.669', prop:'0.24',
+    tier:'mid', offer:true, loyalty:'silver', segment:'at_risk',
+    why:'LTV below the cutoff. Budget-led, cheapest options first.',
+    owhy:'Churn 0.669 is at or above 0.6. Mid tier still gets the offer.',
+    bought:'Ostra Ceramic Lamp', total:'$506', order:'#1008',
+    script:[
+      {me:"I need to redo my living room"},
+      {tools:[['google','gemini 3 flash'],['databricks','customer_profile']], profile:true,
+       bot:"Happy to help, Neal. It's been a while. Give me a budget and I'll keep the whole thing under it."},
+      {me:"under $600 if I can"},
+      {tools:[['bloomreach','recommendations'],['shopify','stock + price']],
+       bot:"Under $600, cheapest first, and it still reads as a finished room:",
+       products:[
+         {n:'Ostra Ceramic Lamp',p:'$320',c:'#c2a884',m:'ceramic · cream',w:'Biggest change for the least money'},
+         {n:'Nord Bouclé Throw',p:'$110',c:'#cbbf9f',m:'bouclé · ivory',w:'Warmth without rearranging'},
+         {n:'Saga Jute Rug, 4×6',p:'$165',c:'#a89272',m:'jute · natural',w:'Defines the seating area'}
+       ],
+       offer:{code:'STAY15', text:"I've put 15% on this one too. It's been a while since your last order and I'd rather not lose you."}},
+      {me:"all three then"},
+      {tools:[['shopify','create checkout'],['bloomreach','cart event']],
+       bot:"$595 before, **$506** after the code. Comfortably inside your number.",
+       checkout:true}
+    ]
+  },
+  rozanne:{
+    name:'Rozanne', ltv:'$5,297', aov:'$378', churn:'0.058', prop:'0.86',
+    tier:'mid', offer:false, loyalty:'bronze', segment:'new',
+    why:'LTV below the cutoff and no history. Full discovery, budget-led.',
+    owhy:'Churn 0.058 is well below 0.6. Nothing to retain against yet.',
+    bought:'Saga Jute Rug', total:'$485', order:'#1009',
+    script:[
+      {me:"I need to redo my living room"},
+      {tools:[['google','gemini 3 flash'],['databricks','customer_profile']], profile:true,
+       bot:"Happy to help. I don't know your taste yet, so three quick things: how big is the room, what's staying, and roughly what are we spending?"},
+      {me:"small, keeping the sofa, maybe $500"},
+      {tools:[['google','gemini 3 flash']],
+       bot:"Got it. Is the sofa light or dark? That decides everything else."},
+      {me:"dark grey"},
+      {tools:[['bloomreach','recommendations'],['shopify','stock + price']],
+       bot:"Then we're lightening everything around it. Cheapest first, $485 total:",
+       products:[
+         {n:'Saga Jute Rug, 4×6',p:'$165',c:'#a89272',m:'jute · natural',w:'Lifts the floor against a dark sofa'},
+         {n:'Ostra Ceramic Lamp',p:'$320',c:'#c2a884',m:'ceramic · cream',w:'Warm light, small footprint'}
+       ]},
+      {me:"both please"},
+      {tools:[['shopify','create checkout'],['bloomreach','cart event']],
+       bot:"$485 with shipping. Ready to go.",
+       checkout:true}
+    ]
+  }
+};
+
+const MAILS=[
+  {t:'Day 1', s:'Your order is confirmed',       p:'Order {order}. Arriving Thursday.'},
+  {t:'Day 2', s:'On its way',                    p:'Your {item} shipped this morning.'},
+  {t:'Day 3', s:'Living with wool and oak',      p:'A short note on care, so it ages the way it should.'},
+  {t:'Day 4', s:'Two more that finish the room', p:'Picked from what you bought, not from a catalog.'},
+  {t:'Day 5', s:'How did it land?',              p:'One question, thirty seconds.'}
+];
+
+const DEMO_INTRO='<div class="intro"><span class="ie">Demo · scripted walkthrough</span>'
+  +'<h3>One screen, the whole journey</h3>'
+  +'<p>Conversation and products on the left. What each platform is doing on the right. The post-purchase emails arrive in the same frame.</p>'
+  +'<p>Press <b>Start</b>, then <b>Next</b> to walk through it.</p>'
+  +'<p>Switch <b>shopper</b> above to see the same agent behave differently.</p></div>';
+
+const demoLog=$('demoLog'), drive=$('drive'), fake=$('fake'), whoBox=$('who'), hint=$('hint');
+let cur='lashawna', step=0, busy=false, demoRun=0;
+const dAdd = (html, cls) => addTo(demoLog, html, cls);
+const fill=(s,p)=>s.replace('{item}',p.bought).replace('{order}',p.order);
+
+Object.keys(P).forEach(k=>{
+  const b=document.createElement('button');
+  b.type='button'; b.textContent=P[k].name; b.dataset.k=k;
+  b.onclick=()=>{ if(busy) return; cur=k; demoReset(); };
+  whoBox.appendChild(b);
+});
+
+function showProfile(){
+  const p=P[cur];
+  prof.innerHTML = tierBoxes({...p, offer_code: p.offer ? 'STAY15' : '', propensity: p.prop});
+}
+
+async function payAndNurture(btn){
+  const p=P[cur], mine=++demoRun;
+  busy=true; drive.disabled=true;
+  const alive = () => mine===demoRun && mode==='demo';
+  try{
+    lamps([['shopify','order paid'],['bloomreach','purchase + consent']],true);
+    await wait(700); if(!alive()) return;
+    dAdd('<span>Order '+esc(p.order)+' paid · '+esc(p.total)+'</span>','rule');
+    if(btn){ btn.textContent='Paid ✓'; }
+    await wait(500); coolAll();
+
+    const t=dAdd('<div class="bub"><div class="typing"><i></i><i></i><i></i></div></div>','msg bot');
+    await wait(900); if(!alive()) return;
+    t.innerHTML='<div class="bub">Paid, thank you. I\'ll keep you posted on delivery, and check in once it\'s all in the room.</div>';
+    toBottom();
+
+    await wait(600);
+    dAdd('<span>Post-purchase journey</span>','rule');
+    nurt.innerHTML='<div class="split">90% journey arm · 10% holdout</div>'
+      + MAILS.map((m,i)=>'<div class="jrow" id="j'+i+'"><span class="jn">'+(i+1)+'</span><span class="js">'+esc(m.s)+'</span><span class="jt">'+esc(m.t)+'</span></div>').join('');
+
+    for(let i=0;i<MAILS.length;i++){
+      await wait(950); if(!alive()) return;
+      lamps([['bloomreach','nurture '+(i+1)+'/5']],true);
+      const j=document.getElementById('j'+i); if(j) j.classList.add('on');
+      dAdd('<div class="ic">✉</div><div class="mb"><div class="ms">'+esc(MAILS[i].s)+'</div>'
+        + '<div class="mp">'+esc(fill(MAILS[i].p,p))+'</div></div><div class="mt">'+esc(MAILS[i].t)+'</div>','mailc');
+      await wait(220); coolAll();
+    }
+
+    await wait(400);
+    dAdd('<span>Journey complete · profile updated for next visit</span>','rule');
+    lamps([['databricks','order write-back']],true);
+    await wait(900); coolAll();
+    fake.textContent='Journey complete. Switch shopper above, or replay.';
+  }catch(err){
+    console.error(err);
+    dAdd('<div class="bub err">Demo error: '+esc(err && err.message ? err.message : String(err))+'</div>','msg bot');
+  }finally{
+    if(mine===demoRun){
+      coolAll(); busy=false; drive.disabled=false;
+      drive.textContent='Replay'; drive.onclick=()=>demoReset();
+    }
+  }
+}
+
+async function next(){
+  const s=P[cur].script[step];
+  if(!s) return;
+  const mine=demoRun;
+  if(step===0){ hint.classList.add('gone'); const ic=demoLog.querySelector('.intro'); if(ic) ic.remove(); }
+  busy=true; drive.disabled=true; step++;
+
+  if(s.me) dAdd('<div class="bub">'+esc(s.me)+'</div>','msg me');
+
+  if(s.bot){
+    const t=dAdd('<div class="bub"><div class="typing"><i></i><i></i><i></i></div></div>','msg bot');
+    if(s.tools){ await wait(350); lamps(s.tools,true); }
+    if(s.profile){ await wait(550); if(mine===demoRun) showProfile(); }
+    await wait(s.profile?750:900);
+    if(mine!==demoRun) return;
+    t.innerHTML='<div class="bub">'+md(s.bot)+'</div>';
+
+    if(s.products){ await wait(250);
+      dAdd(s.products.map(p=>'<div class="card"><div class="tile" style="background:'+p.c+'">'+esc(p.m)+'</div>'
+        +'<div class="cbody"><span class="cprice">'+esc(p.p)+'</span><span class="cname">'+esc(p.n)+'</span>'
+        +'<span class="cwhy">'+esc(p.w)+'</span></div></div>').join(''),'cards');
+    }
+    if(s.offer){ await wait(250);
+      dAdd('<span class="tag">Retention offer · enforced in SQL, not by the model</span>'
+        +'<span class="code">'+esc(s.offer.code)+'</span><p>'+esc(s.offer.text)+'</p>','offer');
+    }
+    await wait(550); coolAll();
+
+    if(s.checkout){
+      await wait(200);
+      const b=document.createElement('button');
+      b.type='button'; b.className='cta'; b.textContent='Go to checkout →';
+      b.onclick=()=>{ b.disabled=true; b.textContent='Processing…'; payAndNurture(b); };
+      demoLog.appendChild(b); toBottom();
+      fake.textContent='Click the checkout button to complete the order.';
+      busy=false; drive.disabled=true;
+      return;
+    }
+  }
+
+  busy=false; drive.disabled=false;
+  drive.textContent = step>=P[cur].script.length ? 'Replay' : 'Next';
+}
+
+function demoRail(){
+  $('railMode').textContent = 'demo';
+  prof.innerHTML='<div class="empty">No lookup yet. Pick a shopper and press Start.</div>';
+  nurt.innerHTML='<div class="empty">Begins when an order is paid.</div>';
+  trace.innerHTML='<div class="empty">Scripted mock. Switch to Live for real tool calls.</div>';
+  foot.innerHTML='Interface concept · Shae Smith<br>Scripted mock · profile values mirror<br>databricks-hackathon.fourcast.customer_profile';
+}
+
+function demoReset(){
+  demoRun++; step=0; busy=false; demoLog.innerHTML=DEMO_INTRO; resetLamps();
+  hint.classList.remove('gone'); demoRail();
+  fake.textContent="Tell me about the room you're working on…";
+  drive.textContent='Start'; drive.disabled=false; drive.onclick=next;
+  document.querySelectorAll('.who button').forEach(b=>b.classList.toggle('on',b.dataset.k===cur));
+}
+
+/* =====================================================================
+   Mode switching + layout
+   ===================================================================== */
+let mode = 'live';
+function setMode(m){
+  mode = m;
+  $('mLive').classList.toggle('on', m==='live');
+  $('mDemo').classList.toggle('on', m==='demo');
+  liveLog.classList.toggle('hidden', m!=='live');
+  $('liveBar').classList.toggle('hidden', m!=='live');
+  emailEl.classList.toggle('hidden', m!=='live');
+  demoLog.classList.toggle('hidden', m!=='demo');
+  $('demoBar').classList.toggle('hidden', m!=='demo');
+  whoBox.classList.toggle('hidden', m!=='demo');
+  $('traceSec').classList.toggle('hidden', false);
+  if(m==='demo'){ demoReset(); }
+  else {
+    demoRun++; busy=false; resetLamps();
+    // replay which platforms this live session has touched
+    L.lastTools.forEach(t => platformsFor(t.tool).forEach(([p,w]) => { const el=document.querySelector('.lamp[data-p="'+p+'"]'); if(el){ el.classList.add('seen'); el.dataset.last=w; el.querySelector('.lwhat').textContent=w; } }));
+    renderTrace(L.lastTools); liveRail(); q.focus();
+  }
+  renderCart(); toBottom();
+}
+$('mLive').onclick = () => { if(mode!=='live') setMode('live'); };
+$('mDemo').onclick = () => { if(mode!=='demo') setMode('demo'); };
+
+$('railBtn').onclick = () => app.classList.toggle('railopen');
+$('railClose').onclick = () => app.classList.remove('railopen');
+if(params.get('rail') === '0') app.classList.add('norail');
+
+// When embedded in the Shopify chat widget, offer a full-size view in a new tab.
+let framed = false; try { framed = window.self !== window.top; } catch(e){ framed = true; }
+if(framed){ const fb=$('fullBtn'); fb.href = location.pathname; fb.classList.remove('hidden'); }
+
+liveInit();
+setMode(params.get('mode') === 'demo' ? 'demo' : 'live');
+</script>
+</body>
+</html>
