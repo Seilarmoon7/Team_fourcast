@@ -208,6 +208,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--body);overflow:hid
   .brand span{display:none;}
   .email{width:170px;}
 }
+/* chat-widget width: the agent asks for email in chat, so drop the field to keep the header compact */
+@media(max-width:520px){ .email{display:none;} .shophead{padding-top:10px;padding-bottom:10px;} .iconbtn{padding:5px 8px;} }
 </style>
 </head>
 <body>
