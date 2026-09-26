@@ -68,6 +68,7 @@
 
   // Conversation state survives page navigation within the tab.
   let S = store.get('state') || { shopper: 'guest', sid: null, email: null, profile: null, prefs: {}, picks: [], chosen: [], lastAsk: '', log: '' };
+  S.chosen = (S.chosen || []).filter((p) => p && p.sku);   // older saves kept SKUs only
   let busy = false;
   const save = () => { S.log = log.innerHTML; store.set('state', S); };
 
@@ -122,12 +123,14 @@
     return `Churn ${churn.toFixed(3)} is below ${thr}. No code.`;
   }
 
-  async function ask(message) {
+  // `browsing` is the piece type the shopper opened from the room, if the message came from there.
+  async function ask(message, browsing = null) {
     message = (message || '').trim();
     if (!message || busy) return;
+    S.browsing = browsing;
     busy = true; send.disabled = true; input.value = '';
     log.querySelector('.shopper__starters')?.remove();
-    S.lastAsk = message;
+    if (!S.lastAsk) S.lastAsk = message;   // the room's brief is how the shopper first described it
     addMsg('me', `<div class="shopper__bub">${esc(message)}</div>`);
     const typing = addMsg('bot', '<div class="shopper__bub"><div class="shopper__typing"><i></i><i></i><i></i></div></div>');
     lamp('google', true); tick('google', 'gemini', 'thinking');
@@ -161,6 +164,7 @@
 
       roomUpdate();
       if (Array.isArray(d.products) && d.products.length) await roomPicks(d.products);
+      else if (S.browsing) { S.browsing = null; render(); }   // nothing came back for that type
       if (d.checkout_url) addCheckout(d.checkout_url, tools);
       ticker.textContent = 'idle · listening';
     } catch (err) {
@@ -175,7 +179,7 @@
 
   function addCheckout(url, tools) {
     const ck = tools.find((t) => t.tool === 'create_checkout');
-    const items = ((ck && ck.args && ck.args.items) || []).map((it) => ({ ...(S.picks.find((p) => p.sku === it.sku) || { title: it.sku, price: 0 }), qty: it.quantity || 1 }));
+    const items = ((ck && ck.args && ck.args.items) || []).map((it) => ({ ...([...S.chosen, ...S.picks].find((p) => p.sku === it.sku) || { title: it.sku, price: 0 }), qty: it.quantity || 1 }));
     const sub = items.reduce((a, p) => a + Number(p.price || 0) * p.qty, 0);
     const offer = S.profile && S.profile.retention_offer;
     const d = addMsg('bot', `<a class="shopper__pay" href="${esc(url)}">Go to checkout${sub ? ' · ' + money(offer ? sub * 0.85 : sub) : ''} →</a>
@@ -205,13 +209,57 @@
   }
 
   /* ---------- room ---------- */
+  // Piece types a room is planned around, matched against product titles in this order.
+  // [key, label, plural, title pattern]
+  const PLANS = {
+    'living room': [
+      ['sofa', 'Sofa', 'sofas', /sofa|loveseat|sectional|daybed/i],
+      ['chair', 'Accent chair', 'accent chairs', /chair/i],
+      ['coffee', 'Coffee table', 'coffee tables', /coffee table/i],
+      ['side', 'Side table', 'side tables', /side table/i],
+      ['rug', 'Rug', 'rugs', /\brug\b|carpet|\bmat\b/i],
+      ['light', 'Lighting', 'lamps', /lamp|light/i],
+      ['throw', 'Throws & cushions', 'throws and cushions', /throw|cushion/i],
+      ['curtains', 'Curtains', 'curtains', /curtain/i],
+      ['storage', 'Media & shelving', 'media consoles and shelving', /console|shelving|bookshelf|tv stand/i],
+      ['decor', 'Decor', 'decor pieces', /\bart\b|print|planter|vase|candle|mirror|\bfig\b/i],
+    ],
+    bedroom: [
+      ['duvet', 'Duvet cover', 'duvet cover sets', /duvet/i],
+      ['sheet', 'Sheets', 'sheets', /sheet|underlay|backing/i],
+      ['spread', 'Bedspread', 'bedspreads', /bedspread|day cover|cover day/i],
+      ['bedside', 'Bedside table', 'bedside tables', /bedside/i],
+    ],
+  };
+  // Where to start when the agent hasn't said which pieces matter.
+  const STARTS = { 'living room': ['sofa', 'rug', 'light', 'coffee'], bedroom: ['duvet', 'sheet', 'spread'] };
+  const typeOf = (text, key) => ((PLANS[key] || Object.values(PLANS).flat()).find((t) => t[3].test(text || '')) || [null])[0];
+  const typeInfo = (k) => Object.values(PLANS).flat().find((t) => t[0] === k);
+
+  function roomKey() {
+    if (S.room) return S.room;
+    const said = String(S.prefs.room || '').toLowerCase();
+    const found = PLANS[said] ? said
+      : [...S.chosen, ...S.picks].map((p) => String(p.room || '').toLowerCase()).find((r) => PLANS[r])
+      || Object.keys(PLANS).find((k) => String(S.lastAsk || '').toLowerCase().includes(k));
+    if (found) S.room = found;
+    return found || null;
+  }
+  // Piece types to steer toward: what the agent said matters, else a sensible start for the room.
+  function suggested(key) {
+    const plan = PLANS[key] || [];
+    const said = [...(S.prefs.pieces || []).map((w) => typeOf(w, key)), ...S.picks.map((p) => p.type)].filter(Boolean);
+    const keys = [...new Set(said.length ? said : STARTS[key] || [])];
+    return keys.filter((k) => plan.some((t) => t[0] === k));
+  }
+
   const firstName = () => (S.shopper === 'guest' ? (S.profile && S.profile.first_name) || 'you' : SHOPPERS[S.shopper]);
   function roomTitle() {
-    const where = S.prefs.room;
+    const where = S.prefs.room || roomKey();
     return where ? `${firstName() === 'you' ? 'Your' : firstName() + "'s"} ${where}` : 'Your room';
   }
   function roomSub() {
-    const bits = [S.prefs.style, S.prefs.budget_max ? `under ${money(S.prefs.budget_max)}` : null, (S.prefs.pieces || []).join(', ')].filter(Boolean);
+    const bits = [S.prefs.style, S.prefs.budget_max ? `under ${money(S.prefs.budget_max)}` : null].filter(Boolean);
     return bits.length ? bits.join(' · ') : S.lastAsk ? `“${S.lastAsk}”` : '';
   }
   function roomShell() {
@@ -220,65 +268,75 @@
     room.hidden = false;
     room.innerHTML = `<div class="shopper-room__intro"><div class="shopper-room__top"><div class="shopper-room__eyebrow">Built for ${esc(firstName())}</div>
       <button type="button" class="shopper-room__restart" data-restart>Start over</button></div>
-      <h2 class="shopper-room__title"></h2><p class="shopper-room__sub"></p><div data-offer></div></div>
-      <div data-band></div><div data-after></div>`;
+      <h2 class="shopper-room__title"></h2><p class="shopper-room__sub"></p><div data-offer></div><div data-plan></div></div>
+      <div data-band></div><div data-bar></div><div data-after></div>`;
     page.scrollTop = 0;
   }
   function roomUpdate() {
     if (!ON_HOME) return;
-    if (!S.profile && !Object.keys(S.prefs).length) return;
+    if (!S.profile && !Object.keys(S.prefs).length && !S.picks.length) return;
+    render();
+  }
+  async function roomPicks(products) {
+    S.picks = await Promise.all(products.map(async (p) => ({ ...p, ...(await lookup(p.sku)), sku: p.sku })));
+    S.picks.forEach((p) => { p.type = typeOf(p.title, roomKey()); });
+    if (!ON_HOME) {
+      addMsg('bot', '<a class="shopper__pay" href="/">See your room →</a>');
+      return;
+    }
+    await render(true);
+  }
+  // The room is drawn from state: the plan of piece types, the type being browsed, and what's chosen.
+  async function render(animate = false) {
+    if (!ON_HOME) return;
     roomShell();
+    const key = roomKey(), plan = PLANS[key] || [], sug = suggested(key);
+    const inRoom = (k) => S.chosen.filter((p) => p.type === k);
     room.querySelector('.shopper-room__title').textContent = roomTitle();
     room.querySelector('.shopper-room__sub').textContent = roomSub();
     const offer = S.profile && S.profile.retention_offer;
     room.querySelector('[data-offer]').innerHTML = offer
       ? `<div class="shopper-room__offer"><b>${esc(offer.code)}</b>Applied automatically when you check out.</div>` : '';
-  }
-  async function roomPicks(products, animate = true) {
-    // New results replace the unchosen cards; pieces the shopper added to the room stay.
-    let fresh = products;
-    if (animate) {
-      const kept = S.picks.filter((p) => S.chosen.includes(p.sku));
-      fresh = (await Promise.all(products.map(async (p) => ({ ...p, ...(await lookup(p.sku)), sku: p.sku }))))
-        .filter((p) => !kept.some((k) => k.sku === p.sku));
-      S.picks = [...kept, ...fresh];
-    } else S.picks = products;
-    if (!ON_HOME) {
-      addMsg('bot', '<a class="shopper__pay" href="/">See your room →</a>');
-      return;
+
+    const ordered = [...sug.map((k) => plan.find((t) => t[0] === k)), ...plan.filter((t) => !sug.includes(t[0]))];
+    room.querySelector('[data-plan]').innerHTML = plan.length ? `<div class="shopper-room__plan">
+      <div class="shopper-room__planhead">What this room needs</div>
+      <div class="shopper-room__slots">${ordered.map(([k, label]) => {
+        const got = inRoom(k);
+        const cls = [sug.includes(k) && 'is-suggested', got.length && 'is-filled', S.browsing === k && 'is-open'].filter(Boolean).join(' ');
+        return `<button type="button" class="shopper-room__slot ${cls}" data-browse="${k}"><b>${got.length ? '✓ ' : sug.includes(k) ? '' : '+ '}${esc(label)}</b>${got.length
+          ? `<span>${esc(got[0].title)}${got.length > 1 ? ` +${got.length - 1}` : ''}</span>` : ''}</button>`;
+      }).join('')}</div>
+      ${S.picks.length ? '' : '<p class="shopper-room__hint">Pick a piece to browse, or tell me what you need.</p>'}</div>` : '';
+
+    const band = room.querySelector('[data-band]');
+    if (!S.picks.length) band.innerHTML = '';
+    else {
+      const types = [...new Set(S.picks.map((p) => p.type))];
+      const open = typeInfo(S.browsing || (types.length === 1 ? types[0] : null));
+      const next = typeInfo(sug.find((k) => k !== (open && open[0]) && !inRoom(k).length));
+      const n = S.picks.length;
+      band.innerHTML = `<div class="shopper-room__band${animate ? ' is-new' : ''}"><div class="shopper-room__bandhead">
+        <h3>${esc(open ? open[2][0].toUpperCase() + open[2].slice(1) : 'Suggestions')}</h3><span>${n} option${n > 1 ? 's' : ''}</span></div>
+        <div class="shopper-room__grid"></div>
+        ${next ? `<button type="button" class="shopper-room__next" data-browse="${next[0]}">Next: ${esc(next[2])} →</button>` : ''}</div>`;
+      const grid = band.querySelector('.shopper-room__grid');
+      for (const p of S.picks) {
+        const on = S.chosen.some((c) => c.sku === p.sku);
+        const bg = p.image ? `background-image:url('${encodeURI(p.image)}')` : 'background:#8a7a66';
+        grid.insertAdjacentHTML('beforeend', `<div class="shopper-room__card${on ? ' is-chosen' : ''}${animate ? ' is-new' : ''}" data-sku="${esc(p.sku)}">
+          <a href="${esc(p.url || '#')}"><div class="shopper-room__img" style="${bg}">${p.image ? '' : esc([p.material, p.color].filter(Boolean).join(' · '))}</div></a>
+          <div class="shopper-room__name">${esc(p.title)}</div><div class="shopper-room__price">${money(p.price)}</div>
+          <div class="shopper-room__why">${esc([p.style, p.material].filter(Boolean).join(' · '))}</div>
+          <button type="button" class="shopper-room__pick" data-pick>${on ? 'In your room ✓' : 'Add to your room'}</button></div>`);
+        if (animate) await wait(170);
+      }
     }
-    roomShell();
-    const n = S.picks.length;
-    room.querySelector('[data-band]').innerHTML = `<div class="shopper-room__band"><div class="shopper-room__bandhead"><h3>${n} piece${n > 1 ? 's' : ''} for this room</h3>
-      <div class="shopper-room__total"></div></div><div class="shopper-room__grid"></div>
-      <button type="button" class="shopper-room__buy" data-buy hidden></button></div>`;
-    const grid = room.querySelector('.shopper-room__grid');
-    for (let i = 0; i < n; i++) {
-      const p = S.picks[i];
-      const bg = p.image ? `background-image:url('${encodeURI(p.image)}')` : 'background:#8a7a66';
-      grid.insertAdjacentHTML('beforeend', `<div class="shopper-room__card" data-sku="${esc(p.sku)}">
-        <a href="${esc(p.url || '#')}"><div class="shopper-room__img" style="${bg}">${p.image ? '' : esc([p.material, p.color].filter(Boolean).join(' · '))}</div></a>
-        <div class="shopper-room__name">${esc(p.title)}</div><div class="shopper-room__price">${money(p.price)}</div>
-        <div class="shopper-room__why">${esc([p.style, p.material].filter(Boolean).join(' · '))}</div>
-        <button type="button" class="shopper-room__pick" data-pick>Add to this room</button></div>`);
-      if (animate && fresh.includes(p)) await wait(170);
-    }
-    roomTotals();
-  }
-  function roomTotals() {
-    if (!ON_HOME) return;
-    const chosen = S.picks.filter((p) => S.chosen.includes(p.sku));
-    const list = chosen.length ? chosen : S.picks;
-    const total = list.reduce((a, p) => a + Number(p.price || 0), 0);
-    room.querySelector('.shopper-room__total').innerHTML = `${chosen.length ? chosen.length + ' chosen' : 'The whole room'}<b>${money(total)}</b>`;
-    room.querySelectorAll('.shopper-room__card').forEach((c) => {
-      const on = S.chosen.includes(c.dataset.sku);
-      c.classList.toggle('is-chosen', on);
-      c.querySelector('[data-pick]').textContent = on ? 'In this room ✓' : 'Add to this room';
-    });
-    const buy = room.querySelector('[data-buy]');
-    buy.hidden = !chosen.length;
-    buy.textContent = `Check out ${chosen.length} piece${chosen.length > 1 ? 's' : ''} in chat →`;
+
+    const total = S.chosen.reduce((a, p) => a + Number(p.price || 0), 0);
+    const c = S.chosen.length;
+    room.querySelector('[data-bar]').innerHTML = c ? `<div class="shopper-room__bar"><span>Your room · ${c} piece${c > 1 ? 's' : ''}</span>
+      <b>${money(total)}</b><button type="button" class="shopper-room__buy" data-buy>Check out your room →</button></div>` : '';
   }
   function roomPaid(order) {
     if (!ON_HOME) return document.createElement('div');
@@ -295,7 +353,7 @@
     d.insertAdjacentHTML('afterend', `<div class="shopper__starters">${STARTERS.map((s) => `<button type="button" data-starter>${esc(s)}</button>`).join('')}</div>`);
   }
   function reset(k) {
-    S = { shopper: k, sid: null, email: null, profile: null, prefs: {}, picks: [], chosen: [], lastAsk: '', log: '' };
+    S = { shopper: k, sid: null, email: null, profile: null, prefs: {}, picks: [], chosen: [], lastAsk: '', log: '', room: null, browsing: null };
     log.innerHTML = '';
     strip.querySelectorAll('.is-hot').forEach((l) => l.classList.remove('is-hot'));
     ticker.textContent = 'idle · waiting for a shopper';
@@ -319,13 +377,15 @@
     const t = e.target.closest('button');
     if (!t) return;
     if (t.hasAttribute('data-restart')) { if (!busy) reset(S.shopper); return; }
-    if (t.hasAttribute('data-pick')) {
+    if (t.hasAttribute('data-browse')) {
+      const [k, , plural] = typeInfo(t.dataset.browse);
+      ask(`Show me ${plural} for my ${roomKey() || 'room'}`, k);
+    } else if (t.hasAttribute('data-pick')) {
       const sku = t.closest('[data-sku]').dataset.sku;
-      S.chosen = S.chosen.includes(sku) ? S.chosen.filter((s) => s !== sku) : [...S.chosen, sku];
-      roomTotals(); save();
+      S.chosen = S.chosen.some((p) => p.sku === sku) ? S.chosen.filter((p) => p.sku !== sku) : [...S.chosen, S.picks.find((p) => p.sku === sku)];
+      render(); save();
     } else if (t.hasAttribute('data-buy')) {
-      const list = S.picks.filter((p) => S.chosen.includes(p.sku));
-      ask(`I'd like to buy: ${list.map((p) => `${p.title} (${p.sku})`).join(', ')}. Please create my checkout.`);
+      ask(`I'd like to buy: ${S.chosen.map((p) => `${p.title} (${p.sku})`).join(', ')}. Please create my checkout.`);
     }
   });
   Object.entries(SHOPPERS).forEach(([k, label]) => {
@@ -339,6 +399,5 @@
   if (S.log) {
     log.innerHTML = S.log; toBottom(log); markShopper();
     roomUpdate();
-    if (S.picks.length && ON_HOME) roomPicks(S.picks, false).then(() => { S.chosen = store.get('state').chosen || []; roomTotals(); });
   } else reset(S.shopper);
 })();

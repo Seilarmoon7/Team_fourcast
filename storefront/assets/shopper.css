@@ -96,19 +96,33 @@ main.shopper-has-room > .shopify-section { display: none; }
 .shopper-room__sub { font-size: 1.6rem; margin-top: 1rem; max-width: 62rem; line-height: 1.6; }
 .shopper-room__offer { margin-top: 2.2rem; border-left: 3px solid var(--sh-mustard); background: #f7ecd6; padding: 1.2rem 1.6rem; display: flex; gap: 1.6rem; align-items: center; font-size: 1.4rem; }
 .shopper-room__offer b { font: 700 1.5rem var(--sh-mono); }
-.shopper-room__band { background: var(--sh-char); margin-top: 2.6rem; padding: 3rem 5rem 3.4rem; animation: sh-rise .4s ease both; }
+.shopper-room__band { background: var(--sh-char); margin-top: 2.6rem; padding: 3rem 5rem 3.4rem; }
 .shopper-room__bandhead { display: flex; align-items: baseline; justify-content: space-between; gap: 2rem; }
 .shopper-room__bandhead h3 { font-family: var(--font-heading-family); font-weight: 500; font-size: 3rem; color: #f1ece3; margin: 0; }
-.shopper-room__total { font-size: 1.5rem; color: #d8d2c6; }
-.shopper-room__total b { color: #fff; font-size: 2rem; margin-left: .6rem; }
-.shopper-room__total s { color: var(--sh-rail-muted); margin-left: .6rem; }
 .shopper-room__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(22rem, 1fr)); gap: 1.6rem; margin-top: 2rem; }
-.shopper-room__card { animation: sh-rise .4s ease both; color: #f1ece3; display: flex; flex-direction: column; }
+.shopper-room__band.is-new, .shopper-room__card.is-new { animation: sh-rise .4s ease both; }
+.shopper-room__card { color: #f1ece3; display: flex; flex-direction: column; }
 .shopper-room__card a { color: inherit; text-decoration: none; }
 .shopper-room__pick { margin-top: auto; align-self: flex-start; font: 600 1.25rem var(--font-body-family); color: #f1ece3; background: transparent; border: 1px solid #6a655c; border-radius: 2px; padding: .7rem 1.2rem; cursor: pointer; }
 .shopper-room__card .shopper-room__why { margin-bottom: 1.2rem; }
 .shopper-room__card.is-chosen .shopper-room__pick { background: var(--sh-mustard); border-color: var(--sh-mustard); color: var(--sh-char); }
-.shopper-room__buy { margin-top: 2.4rem; background: #f1ece3; color: var(--sh-char); border: 0; border-radius: 2px; padding: 1.3rem 2.2rem; font: 600 1.4rem var(--font-body-family); cursor: pointer; }
+.shopper-room__bandhead span { font-size: 1.4rem; color: #d8d2c6; }
+.shopper-room__plan { margin-top: 2.6rem; }
+.shopper-room__planhead { font: 600 1.1rem var(--sh-mono); letter-spacing: .16rem; text-transform: uppercase; color: var(--sh-ink); opacity: .7; }
+.shopper-room__slots { display: flex; flex-wrap: wrap; gap: .8rem; margin-top: 1.2rem; }
+.shopper-room__slot { display: flex; flex-direction: column; align-items: flex-start; gap: .2rem; text-align: left; padding: .9rem 1.4rem; border: 1px dashed #b9ae9c; border-radius: 2px; background: transparent; color: var(--sh-ink); font: 1.35rem var(--font-body-family); cursor: pointer; opacity: .75; }
+.shopper-room__slot b { font-weight: 600; }
+.shopper-room__slot span { font-size: 1.2rem; max-width: 20rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.shopper-room__slot.is-suggested { border: 1px solid var(--sh-ink); opacity: 1; }
+.shopper-room__slot.is-filled { border: 1px solid var(--sh-mustard); background: #f7ecd6; opacity: 1; }
+.shopper-room__slot.is-open { background: var(--sh-char); border-color: var(--sh-char); color: #f1ece3; opacity: 1; }
+.shopper-room__hint { font-size: 1.4rem; margin-top: 1.4rem; opacity: .8; }
+.shopper-room__next { margin-top: 2.4rem; background: transparent; color: #f1ece3; border: 1px solid #f1ece3; border-radius: 2px; padding: 1.1rem 1.8rem; font: 600 1.4rem var(--font-body-family); cursor: pointer; }
+.shopper-room__bar { display: flex; align-items: center; gap: 1.6rem; margin: 2.4rem 5rem 0; padding: 1.6rem 2rem; border: 1px solid var(--sh-mustard); background: #f7ecd6; font-size: 1.5rem; }
+.shopper-room__bar b { font-size: 2rem; margin-right: auto; }
+.shopper-room__buy { background: var(--sh-char); color: #f1ece3; border: 0; border-radius: 2px; padding: 1.3rem 2.2rem; font: 600 1.4rem var(--font-body-family); cursor: pointer; }
+/* The theme hides empty divs; a placeholder with no material or colour text must still show. */
+.shopper-room__img:empty { display: flex; }
 .shopper-room__img { aspect-ratio: 5 / 4; display: flex; align-items: flex-end; padding: 1.2rem; background-size: cover; background-position: center; font: .95rem var(--sh-mono); letter-spacing: .1rem; text-transform: uppercase; color: rgba(255, 255, 255, .9); }
 .shopper-room__name { font-family: var(--font-heading-family); font-size: 2.2rem; line-height: 1.15; margin-top: 1.2rem; }
 .shopper-room__price { font-size: 1.5rem; margin-top: .4rem; }
