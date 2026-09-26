@@ -110,9 +110,9 @@ main.shopper-has-room > .shopify-section { display: none; }
 .shopper-room__plan { margin-top: 2.6rem; }
 .shopper-room__planhead { font: 600 1.1rem var(--sh-mono); letter-spacing: .16rem; text-transform: uppercase; color: var(--sh-ink); opacity: .7; }
 .shopper-room__slots { display: flex; flex-wrap: wrap; gap: .8rem; margin-top: 1.2rem; }
-.shopper-room__slot { display: flex; flex-direction: column; align-items: flex-start; gap: .2rem; text-align: left; padding: .9rem 1.4rem; border: 1px dashed #b9ae9c; border-radius: 2px; background: transparent; color: var(--sh-ink); font: 1.35rem var(--font-body-family); cursor: pointer; opacity: .75; }
+.shopper-room__slot { display: flex; align-items: baseline; gap: .8rem; text-align: left; padding: .9rem 1.4rem; border: 1px dashed #b9ae9c; border-radius: 2px; background: transparent; color: var(--sh-ink); font: 1.35rem var(--font-body-family); cursor: pointer; opacity: .75; }
 .shopper-room__slot b { font-weight: 600; }
-.shopper-room__slot span { font-size: 1.2rem; max-width: 20rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.shopper-room__slot span { font-size: 1.25rem; opacity: .8; max-width: 20rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .shopper-room__slot.is-suggested { border: 1px solid var(--sh-ink); opacity: 1; }
 .shopper-room__slot.is-filled { border: 1px solid var(--sh-mustard); background: #f7ecd6; opacity: 1; }
 .shopper-room__slot.is-open { background: var(--sh-char); border-color: var(--sh-char); color: #f1ece3; opacity: 1; }
