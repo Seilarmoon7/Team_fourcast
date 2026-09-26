@@ -89,6 +89,8 @@
 main.shopper-has-room > .shopify-section { display: none; }
 .shopper-room { padding-bottom: 4rem; font-family: var(--font-body-family); color: var(--sh-ink); animation: sh-rise .45s ease both; }
 .shopper-room__intro { padding: 4rem 5rem 1rem; }
+.shopper-room__top { display: flex; align-items: baseline; justify-content: space-between; gap: 2rem; }
+.shopper-room__restart { background: none; border: 0; padding: 0; font: 600 1.3rem var(--font-body-family); color: var(--sh-ink); text-decoration: underline; cursor: pointer; }
 .shopper-room__eyebrow { font-size: 1.1rem; letter-spacing: .24rem; text-transform: uppercase; color: var(--sh-mustard); font-weight: 600; }
 .shopper-room__title { font-family: var(--font-heading-family); font-weight: 500; font-size: 5rem; line-height: 1.05; margin: 1rem 0 0; }
 .shopper-room__sub { font-size: 1.6rem; margin-top: 1rem; max-width: 62rem; line-height: 1.6; }

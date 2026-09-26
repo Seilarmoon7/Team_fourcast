@@ -212,13 +212,14 @@
   }
   function roomSub() {
     const bits = [S.prefs.style, S.prefs.budget_max ? `under ${money(S.prefs.budget_max)}` : null, (S.prefs.pieces || []).join(', ')].filter(Boolean);
-    return bits.length ? bits.join(' · ') : `“${S.lastAsk}”`;
+    return bits.length ? bits.join(' · ') : S.lastAsk ? `“${S.lastAsk}”` : '';
   }
   function roomShell() {
     if (!room.hidden) return;
     room.closest('main').classList.add('shopper-has-room');
     room.hidden = false;
-    room.innerHTML = `<div class="shopper-room__intro"><div class="shopper-room__eyebrow">Built for ${esc(firstName())}</div>
+    room.innerHTML = `<div class="shopper-room__intro"><div class="shopper-room__top"><div class="shopper-room__eyebrow">Built for ${esc(firstName())}</div>
+      <button type="button" class="shopper-room__restart" data-restart>Start over</button></div>
       <h2 class="shopper-room__title"></h2><p class="shopper-room__sub"></p><div data-offer></div></div>
       <div data-band></div><div data-after></div>`;
     page.scrollTop = 0;
@@ -311,6 +312,7 @@
   room.addEventListener('click', (e) => {
     const t = e.target.closest('button');
     if (!t) return;
+    if (t.hasAttribute('data-restart')) { if (!busy) reset(S.shopper); return; }
     if (t.hasAttribute('data-pick')) {
       const sku = t.closest('[data-sku]').dataset.sku;
       S.chosen = S.chosen.includes(sku) ? S.chosen.filter((s) => s !== sku) : [...S.chosen, sku];
