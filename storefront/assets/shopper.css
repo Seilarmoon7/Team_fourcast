@@ -31,7 +31,8 @@
 .shopper__log { flex: 1; min-height: 0; overflow-y: auto; padding: 1.8rem 2.2rem .8rem; }
 .shopper__msg { display: flex; flex-direction: column; margin-bottom: .6rem; animation: sh-rise .28s ease both; }
 .shopper__msg--me { align-items: flex-end; margin-top: 1.2rem; }
-.shopper__bub { padding: 1rem 1.4rem; border-radius: 1.4rem; max-width: 90%; font-size: 1.4rem; line-height: 1.55; }
+.shopper__bub { padding: 1rem 1.4rem; border-radius: 1.4rem; max-width: 90%; font-size: 1.4rem; line-height: 1.55; overflow-wrap: anywhere; }
+.shopper__bub a { color: inherit; text-decoration: underline; }
 .shopper__msg--bot .shopper__bub { background: #fff; border: 1px solid var(--sh-line); color: var(--sh-ink); }
 .shopper__msg--me .shopper__bub { background: var(--sh-char); color: #f1ece3; }
 .shopper__bub p { margin: 0 0 .6rem; } .shopper__bub p:last-child { margin: 0; }

@@ -48,7 +48,10 @@
   const page = document.querySelector('.shopper-layout__page') || document.scrollingElement;
 
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-  const inlineMd = (s) => esc(s).replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<i>$2</i>');
+  // [text](url) becomes a link; a bare URL becomes a short "link" so it can't stretch the bubble.
+  const links = (s) => s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s<]+)/g,
+    (m, text, url, bare) => `<a href="${url || bare}" target="_top">${text || 'link'}</a>`);
+  const inlineMd = (s) => links(esc(s)).replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<i>$2</i>');
   const md = (s) => String(s ?? '').trim().replace(/^[ \t]*[*-][ \t]+/gm, '• ').split(/\n{2,}/)
     .map((p) => '<p>' + inlineMd(p).replace(/\n/g, '<br>') + '</p>').join('');
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
