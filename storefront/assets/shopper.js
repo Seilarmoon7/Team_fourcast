@@ -53,7 +53,9 @@
     (m, text, url, bare) => `<a href="${url || bare}" target="_top">${text || 'link'}</a>`);
   const inlineMd = (s) => links(esc(s)).replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<i>$2</i>');
   const md = (s) => String(s ?? '').trim().replace(/^[ \t]*[*-][ \t]+/gm, '• ').split(/\n{2,}/)
-    .map((p) => '<p>' + inlineMd(p).replace(/\n/g, '<br>') + '</p>').join('');
+    .filter((p) => p.trim()).map((p) => '<p>' + inlineMd(p).replace(/\n/g, '<br>') + '</p>').join('');
+  // The checkout button carries the checkout link, so drop the copy the agent writes into its reply.
+  const withoutCartLinks = (s) => String(s ?? '').replace(/\[[^\]]*\]\((https?:\/\/[^\s)]*\/cart\/[^\s)]*)\)|https?:\/\/\S*\/cart\/\S*/g, '');
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const money = (n) => '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: Number(n) % 1 ? 2 : 0, maximumFractionDigits: 2 });
   const toBottom = (el) => { el.scrollTop = el.scrollHeight; requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; }); };
@@ -148,7 +150,7 @@
       tools.forEach((t) => { if (t.tool === 'save_preferences' && t.args) Object.assign(S.prefs, t.args); });
 
       await playTools(tools);
-      typing.innerHTML = `<div class="shopper__bub">${md(d.reply || '…')}</div>`;
+      typing.innerHTML = `<div class="shopper__bub">${md((d.checkout_url ? withoutCartLinks(d.reply) : d.reply) || '…')}</div>`;
       if (tools.length) addReceipt(tools, firstProfile ? offerNote(d.profile) : '');
 
       roomUpdate();
