@@ -85,8 +85,9 @@
 .shopper-strip__ticker em { font-style: normal; color: #fff; }
 
 /* ---------- the room, built at the top of the page ---------- */
-.shopper-tucked { display: none; }
-.shopper-room { font-family: var(--font-body-family); color: var(--sh-ink); animation: sh-rise .45s ease both; }
+/* While the room is up it replaces the homepage sections; header and footer stay. */
+main.shopper-has-room > .shopify-section { display: none; }
+.shopper-room { padding-bottom: 4rem; font-family: var(--font-body-family); color: var(--sh-ink); animation: sh-rise .45s ease both; }
 .shopper-room__intro { padding: 4rem 5rem 1rem; }
 .shopper-room__eyebrow { font-size: 1.1rem; letter-spacing: .24rem; text-transform: uppercase; color: var(--sh-mustard); font-weight: 600; }
 .shopper-room__title { font-family: var(--font-heading-family); font-weight: 500; font-size: 5rem; line-height: 1.05; margin: 1rem 0 0; }
@@ -116,4 +117,3 @@
 .shopper-room__day { font-size: 1.1rem; letter-spacing: .16rem; text-transform: uppercase; color: var(--sh-muted); padding-top: .6rem; }
 .shopper-room__subject { font-family: var(--font-heading-family); font-size: 2.2rem; }
 .shopper-room__preview { font-size: 1.35rem; color: var(--sh-body); margin-top: .2rem; }
-.shopper-room__resume { margin: 3rem 5rem 2rem; padding-top: 1.4rem; border-top: 1px dashed var(--sh-line); font-size: 1.1rem; letter-spacing: .2rem; text-transform: uppercase; color: var(--sh-muted); text-align: center; }

@@ -15,6 +15,8 @@
 
   const AGENT = (root.dataset.agent || '').replace(/\/$/, '');
   const ACCOUNT_EMAIL = root.dataset.email || null;
+  // The room is built on the homepage only; other pages keep their own content.
+  const ON_HOME = root.dataset.template === 'index';
 
   const PN = { google: 'Gemini', databricks: 'Databricks', bloomreach: 'Bloomreach', shopify: 'Shopify' };
   // Which platform each agent tool touches.
@@ -65,7 +67,7 @@
   };
 
   // Conversation state survives page navigation within the tab.
-  let S = store.get('state') || { shopper: 'guest', sid: null, email: null, profile: null, prefs: {}, picks: [], chosen: [], log: '' };
+  let S = store.get('state') || { shopper: 'guest', sid: null, email: null, profile: null, prefs: {}, picks: [], chosen: [], lastAsk: '', log: '' };
   let busy = false;
   const save = () => { S.log = log.innerHTML; store.set('state', S); };
 
@@ -125,6 +127,7 @@
     if (!message || busy) return;
     busy = true; send.disabled = true; input.value = '';
     log.querySelector('.shopper__starters')?.remove();
+    S.lastAsk = message;
     addMsg('me', `<div class="shopper__bub">${esc(message)}</div>`);
     const typing = addMsg('bot', '<div class="shopper__bub"><div class="shopper__typing"><i></i><i></i><i></i></div></div>');
     lamp('google', true); tick('google', 'gemini', 'thinking');
@@ -147,7 +150,10 @@
       if (firstProfile && (d.profile.source || []).some((s) => String(s).startsWith('databricks'))) {
         tools.splice(tools.findIndex((t) => t.tool === 'get_customer_profile') + 1, 0, { tool: 'databricks_profile', args: {}, ok: true, n: null });
       }
-      tools.forEach((t) => { if (t.tool === 'save_preferences' && t.args) Object.assign(S.prefs, t.args); });
+      tools.forEach((t) => {
+        if (t.tool === 'save_preferences' && t.args) Object.assign(S.prefs, t.args);
+        else if (t.args && t.args.room && !S.prefs.room) S.prefs.room = t.args.room;
+      });
 
       await playTools(tools);
       typing.innerHTML = `<div class="shopper__bub">${md((d.checkout_url ? withoutCartLinks(d.reply) : d.reply) || '…')}</div>`;
@@ -201,24 +207,24 @@
   /* ---------- room ---------- */
   const firstName = () => (S.shopper === 'guest' ? (S.profile && S.profile.first_name) || 'you' : SHOPPERS[S.shopper]);
   function roomTitle() {
-    const where = S.prefs.room || S.prefs.room_type;
+    const where = S.prefs.room;
     return where ? `${firstName() === 'you' ? 'Your' : firstName() + "'s"} ${where}` : 'Your room';
   }
   function roomSub() {
-    const bits = [S.prefs.style, S.prefs.budget_max ? `under ${money(S.prefs.budget_max)}` : null, S.prefs.colors || S.prefs.color].filter(Boolean);
-    return bits.length ? bits.join(' · ') : 'Tell the shopper what you have in mind.';
+    const bits = [S.prefs.style, S.prefs.budget_max ? `under ${money(S.prefs.budget_max)}` : null, (S.prefs.pieces || []).join(', ')].filter(Boolean);
+    return bits.length ? bits.join(' · ') : `“${S.lastAsk}”`;
   }
   function roomShell() {
     if (!room.hidden) return;
-    // Her image banner steps aside while the room is up; the rest of her page stays below.
-    document.querySelector('main .banner')?.closest('.shopify-section')?.classList.add('shopper-tucked');
+    room.closest('main').classList.add('shopper-has-room');
     room.hidden = false;
     room.innerHTML = `<div class="shopper-room__intro"><div class="shopper-room__eyebrow">Built for ${esc(firstName())}</div>
       <h2 class="shopper-room__title"></h2><p class="shopper-room__sub"></p><div data-offer></div></div>
-      <div data-band></div><div data-after></div><div class="shopper-room__resume">The rest of the store continues below</div>`;
+      <div data-band></div><div data-after></div>`;
     page.scrollTop = 0;
   }
   function roomUpdate() {
+    if (!ON_HOME) return;
     if (!S.profile && !Object.keys(S.prefs).length) return;
     roomShell();
     room.querySelector('.shopper-room__title').textContent = roomTitle();
@@ -230,6 +236,10 @@
   async function roomPicks(products, animate = true) {
     S.picks = animate ? await Promise.all(products.map(async (p) => ({ ...p, ...(await lookup(p.sku)), sku: p.sku }))) : products;
     S.chosen = [];
+    if (!ON_HOME) {
+      addMsg('bot', '<a class="shopper__pay" href="/">See your room →</a>');
+      return;
+    }
     roomShell();
     const n = S.picks.length;
     room.querySelector('[data-band]').innerHTML = `<div class="shopper-room__band"><div class="shopper-room__bandhead"><h3>${n} piece${n > 1 ? 's' : ''} for this room</h3>
@@ -249,6 +259,7 @@
     roomTotals();
   }
   function roomTotals() {
+    if (!ON_HOME) return;
     const chosen = S.picks.filter((p) => S.chosen.includes(p.sku));
     const list = chosen.length ? chosen : S.picks;
     const total = list.reduce((a, p) => a + Number(p.price || 0), 0);
@@ -263,6 +274,7 @@
     buy.textContent = `Check out ${chosen.length} piece${chosen.length > 1 ? 's' : ''} in chat →`;
   }
   function roomPaid(order) {
+    if (!ON_HOME) return document.createElement('div');
     const a = room.querySelector('[data-after]');
     a.innerHTML = `<div class="shopper-room__after"><h3>Order ${esc(order)}, what happens next</h3><div data-mails></div></div>`;
     return a.querySelector('[data-mails]');
@@ -276,12 +288,12 @@
     d.insertAdjacentHTML('afterend', `<div class="shopper__starters">${STARTERS.map((s) => `<button type="button" data-starter>${esc(s)}</button>`).join('')}</div>`);
   }
   function reset(k) {
-    S = { shopper: k, sid: null, email: null, profile: null, prefs: {}, picks: [], chosen: [], log: '' };
+    S = { shopper: k, sid: null, email: null, profile: null, prefs: {}, picks: [], chosen: [], lastAsk: '', log: '' };
     log.innerHTML = '';
     strip.querySelectorAll('.is-hot').forEach((l) => l.classList.remove('is-hot'));
     ticker.textContent = 'idle · waiting for a shopper';
     room.hidden = true; room.innerHTML = '';
-    document.querySelectorAll('.shopper-tucked').forEach((s) => s.classList.remove('shopper-tucked'));
+    room.closest('main').classList.remove('shopper-has-room');
     markShopper(); starters(); save();
   }
   function markShopper() {
@@ -319,6 +331,6 @@
   if (S.log) {
     log.innerHTML = S.log; toBottom(log); markShopper();
     roomUpdate();
-    if (S.picks.length) roomPicks(S.picks, false).then(() => { S.chosen = store.get('state').chosen || []; roomTotals(); });
+    if (S.picks.length && ON_HOME) roomPicks(S.picks, false).then(() => { S.chosen = store.get('state').chosen || []; roomTotals(); });
   } else reset(S.shopper);
 })();
