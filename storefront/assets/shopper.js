@@ -235,8 +235,14 @@
       ? `<div class="shopper-room__offer"><b>${esc(offer.code)}</b>Applied automatically when you check out.</div>` : '';
   }
   async function roomPicks(products, animate = true) {
-    S.picks = animate ? await Promise.all(products.map(async (p) => ({ ...p, ...(await lookup(p.sku)), sku: p.sku }))) : products;
-    S.chosen = [];
+    // New results replace the unchosen cards; pieces the shopper added to the room stay.
+    let fresh = products;
+    if (animate) {
+      const kept = S.picks.filter((p) => S.chosen.includes(p.sku));
+      fresh = (await Promise.all(products.map(async (p) => ({ ...p, ...(await lookup(p.sku)), sku: p.sku }))))
+        .filter((p) => !kept.some((k) => k.sku === p.sku));
+      S.picks = [...kept, ...fresh];
+    } else S.picks = products;
     if (!ON_HOME) {
       addMsg('bot', '<a class="shopper__pay" href="/">See your room →</a>');
       return;
@@ -255,7 +261,7 @@
         <div class="shopper-room__name">${esc(p.title)}</div><div class="shopper-room__price">${money(p.price)}</div>
         <div class="shopper-room__why">${esc([p.style, p.material].filter(Boolean).join(' · '))}</div>
         <button type="button" class="shopper-room__pick" data-pick>Add to this room</button></div>`);
-      if (animate) await wait(170);
+      if (animate && fresh.includes(p)) await wait(170);
     }
     roomTotals();
   }
