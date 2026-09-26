@@ -1,0 +1,117 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "image_banner_qHjn9p": {
+      "type": "image-banner",
+      "name": "t:sections.image-banner.presets.name",
+      "settings": {
+        "image": "shopify://shop_images/contact-us-2-62fa2cc2edbaf-sej.webp",
+        "image_overlay_opacity": 0,
+        "image_height": "medium",
+        "desktop_content_position": "middle-center",
+        "show_text_box": true,
+        "desktop_content_alignment": "center",
+        "color_scheme": "background-1",
+        "image_behavior": "none",
+        "mobile_content_alignment": "center",
+        "stack_images_on_mobile": true,
+        "show_text_below": true
+      }
+    },
+    "main": {
+      "type": "main-page",
+      "settings": {
+        "padding_top": 36,
+        "padding_bottom": 36
+      }
+    },
+    "multicolumn_j84UDj": {
+      "type": "multicolumn",
+      "blocks": {
+        "column_a3L78N": {
+          "type": "column",
+          "settings": {
+            "title": "&nbsp;Product questions&nbsp;",
+            "text": "<p>Ask us about materials, dimensions, care, or how a piece might work in your room. Include the product name or a link so we know exactly what you’re looking at.</p>",
+            "link_label": "",
+            "link": ""
+          }
+        },
+        "column_Jejaxt": {
+          "type": "column",
+          "settings": {
+            "title": "",
+            "text": "<h3>Returns or an issue with your item</h3><p>Tell us what happened and include your order number. If an item arrived damaged or isn’t what you expected, describe the issue so we can understand how to help.</p>",
+            "link_label": "",
+            "link": ""
+          }
+        },
+        "column_yXbema": {
+          "type": "column",
+          "settings": {
+            "title": "",
+            "text": "<h3>Orders and delivery</h3><p>For questions about an existing order or its delivery, include your order number and the email address used at checkout. Please don’t send payment card details through this form.</p>",
+            "link_label": "",
+            "link": ""
+          }
+        },
+        "column_zLKtWf": {
+          "type": "column",
+          "settings": {
+            "title": "",
+            "text": "<h3>Design and general enquiries</h3><p>Not sure where to start? Tell us a little about your space and what you’re looking for. We’re happy to help you narrow down your options.</p>",
+            "link_label": "",
+            "link": ""
+          }
+        }
+      },
+      "block_order": [
+        "column_a3L78N",
+        "column_Jejaxt",
+        "column_yXbema",
+        "column_zLKtWf"
+      ],
+      "name": "t:sections.multicolumn.presets.name",
+      "settings": {
+        "title": "How can we help?",
+        "heading_size": "h2",
+        "image_width": "full",
+        "image_ratio": "adapt",
+        "columns_desktop": 3,
+        "column_alignment": "left",
+        "background_style": "primary",
+        "button_label": "",
+        "button_link": "",
+        "color_scheme": "background-1",
+        "columns_mobile": "1",
+        "swipe_on_mobile": false,
+        "padding_top": 36,
+        "padding_bottom": 36
+      }
+    },
+    "form": {
+      "type": "contact-form",
+      "settings": {
+        "heading": "",
+        "heading_size": "h1",
+        "color_scheme": "background-1",
+        "padding_top": 36,
+        "padding_bottom": 36
+      }
+    }
+  },
+  "order": [
+    "image_banner_qHjn9p",
+    "main",
+    "multicolumn_j84UDj",
+    "form"
+  ]
+}

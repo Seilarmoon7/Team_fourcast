@@ -1,0 +1,298 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "6a3bb789-ce10-45f5-ae67-e2063ef8c76b": {
+      "type": "image-banner",
+      "custom_css": [],
+      "settings": {
+        "image": "shopify://shop_images/65428449a9a397146d3f94ff_Shop_the_Look_Dein_Onlineshop_als_Inspiration_Moebel_home_-_header.webp",
+        "image_overlay_opacity": 0,
+        "image_height": "medium",
+        "desktop_content_position": "middle-left",
+        "show_text_box": false,
+        "desktop_content_alignment": "left",
+        "color_scheme": "accent-1",
+        "image_behavior": "none",
+        "mobile_content_alignment": "center",
+        "stack_images_on_mobile": true,
+        "show_text_below": true
+      }
+    },
+    "rich_text_4EQDXr": {
+      "type": "rich-text",
+      "blocks": {
+        "heading_PYJk9C": {
+          "type": "heading",
+          "settings": {
+            "heading": "&nbsp;A Home That Feels Like You&nbsp;",
+            "heading_size": "h1"
+          }
+        },
+        "text_BqzjLY": {
+          "type": "text",
+          "settings": {
+            "text": "<p>Thoughtfully designed furniture and home décor for spaces that feel warm, beautiful, and effortlessly lived in. At <strong>Nordhem Home</strong>, we believe the best spaces balance comfort and character. Discover timeless pieces, modern accents, and thoughtful details designed to bring your home together&nbsp;</p>"
+          }
+        },
+        "button_xLiH3P": {
+          "type": "button",
+          "settings": {
+            "button_label": "Shop products",
+            "button_link": "shopify://collections/all",
+            "button_style_secondary": true,
+            "button_label_2": "",
+            "button_link_2": "",
+            "button_style_secondary_2": false
+          }
+        }
+      },
+      "block_order": [
+        "heading_PYJk9C",
+        "text_BqzjLY",
+        "button_xLiH3P"
+      ],
+      "name": "t:sections.rich-text.presets.name",
+      "settings": {
+        "desktop_content_position": "center",
+        "content_alignment": "left",
+        "color_scheme": "accent-2",
+        "full_width": false,
+        "padding_top": 24,
+        "padding_bottom": 24
+      }
+    },
+    "featured_collection": {
+      "type": "featured-collection",
+      "settings": {
+        "title": "<strong>Featured products</strong>",
+        "heading_size": "h2",
+        "description": "",
+        "show_description": true,
+        "description_style": "body",
+        "collection": "automated-collection",
+        "products_to_show": 4,
+        "columns_desktop": 4,
+        "full_width": false,
+        "show_view_all": false,
+        "view_all_style": "solid",
+        "enable_desktop_slider": true,
+        "color_scheme": "accent-1",
+        "image_ratio": "square",
+        "show_secondary_image": true,
+        "show_vendor": false,
+        "show_rating": false,
+        "enable_quick_add": false,
+        "columns_mobile": "2",
+        "swipe_on_mobile": false,
+        "padding_top": 24,
+        "padding_bottom": 24
+      }
+    },
+    "f1552b18-6017-4231-810d-74e61da22c37": {
+      "type": "image-with-text",
+      "blocks": {
+        "template--18309637636369__f1552b18-6017-4231-810d-74e61da22c37-1680164422d7fb2efc-0": {
+          "type": "heading",
+          "settings": {
+            "heading": "Feel at HOME with Every DETAIL",
+            "heading_size": "h1"
+          }
+        },
+        "template--18309637636369__f1552b18-6017-4231-810d-74e61da22c37-1680164422d7fb2efc-1": {
+          "type": "text",
+          "settings": {
+            "text": "<p>LEARN ABOUT OUR DESIGN SERVICES</p><p>Nordhem Home offers <strong>expert</strong> interior design seervices that set us apart from other furniture retailers</p>",
+            "text_style": "body"
+          }
+        },
+        "template--18309637636369__f1552b18-6017-4231-810d-74e61da22c37-1680164422d7fb2efc-2": {
+          "type": "button",
+          "settings": {
+            "button_label": "Learn More",
+            "button_link": "shopify://pages/design-services"
+          }
+        }
+      },
+      "block_order": [
+        "template--18309637636369__f1552b18-6017-4231-810d-74e61da22c37-1680164422d7fb2efc-0",
+        "template--18309637636369__f1552b18-6017-4231-810d-74e61da22c37-1680164422d7fb2efc-1",
+        "template--18309637636369__f1552b18-6017-4231-810d-74e61da22c37-1680164422d7fb2efc-2"
+      ],
+      "settings": {
+        "image": "shopify://shop_images/design_services.jpg",
+        "height": "adapt",
+        "desktop_image_width": "medium",
+        "layout": "image_first",
+        "desktop_content_position": "middle",
+        "desktop_content_alignment": "left",
+        "content_layout": "no-overlap",
+        "color_scheme": "accent-1",
+        "image_behavior": "none",
+        "mobile_content_alignment": "left",
+        "padding_top": 60,
+        "padding_bottom": 60
+      }
+    },
+    "38cdf60f-e431-43b5-aac3-7e6215447d67": {
+      "type": "collection-list",
+      "blocks": {
+        "featured_collection_XcQzeB": {
+          "type": "featured_collection",
+          "settings": {
+            "collection": ""
+          }
+        }
+      },
+      "block_order": [
+        "featured_collection_XcQzeB"
+      ],
+      "settings": {
+        "title": "Shop by Room",
+        "heading_size": "h2",
+        "image_ratio": "square",
+        "columns_desktop": 3,
+        "color_scheme": "accent-1",
+        "show_view_all": false,
+        "columns_mobile": "2",
+        "swipe_on_mobile": false,
+        "padding_top": 12,
+        "padding_bottom": 12
+      }
+    },
+    "rich_text_M3HRem": {
+      "type": "rich-text",
+      "blocks": {
+        "heading_ccfy7B": {
+          "type": "heading",
+          "settings": {
+            "heading": "The Harvest Edit",
+            "heading_size": "h1"
+          }
+        },
+        "text_rTa9q9": {
+          "type": "text",
+          "settings": {
+            "text": "<p>Explore thoughtfully selected pieces for the season, curated to bring warmth and character to your home.</p>"
+          }
+        },
+        "button_FDFMFt": {
+          "type": "button",
+          "settings": {
+            "button_label": "Shop the Harvest Edit",
+            "button_link": "shopify://collections/the-harvest-edit",
+            "button_style_secondary": false,
+            "button_label_2": "",
+            "button_link_2": "",
+            "button_style_secondary_2": false
+          }
+        }
+      },
+      "block_order": [
+        "heading_ccfy7B",
+        "text_rTa9q9",
+        "button_FDFMFt"
+      ],
+      "name": "t:sections.rich-text.presets.name",
+      "settings": {
+        "desktop_content_position": "center",
+        "content_alignment": "center",
+        "color_scheme": "background-1",
+        "full_width": true,
+        "padding_top": 12,
+        "padding_bottom": 12
+      }
+    },
+    "1790362919b7ce883a": {
+      "type": "_blocks",
+      "blocks": {
+        "ai_gen_block_3ff2f93_8JaD4J": {
+          "type": "ai_gen_block_3ff2f93",
+          "settings": {
+            "eyebrow": "The journal",
+            "title": "Stories for considered living",
+            "intro": "<p>Ideas, objects and points of view for making everyday life feel a little more intentional.</p>",
+            "desktop_width_percent": 100,
+            "title_size": 72,
+            "feature_image": "shopify://shop_images/bohemian.avif",
+            "image_caption": "A closer look at the details that make a space feel personal.",
+            "feature_kicker": "At home",
+            "feature_title": "The quiet art of collecting well",
+            "feature_copy": "<p>Thoughtful materials and meaningful finds bring depth to a home. Discover a slower approach to choosing pieces that tell your story.</p>",
+            "feature_link_label": "Read the story",
+            "feature_link": "",
+            "story_1_title": "A palette inspired by nature",
+            "story_1_copy": "Earthy tones and tactile finishes bring warmth to the everyday.",
+            "story_1_link_label": "Explore",
+            "story_1_link": "",
+            "story_2_title": "Objects with a second life",
+            "story_2_copy": "Meet the enduring pieces designed to be kept, used and loved.",
+            "story_2_link_label": "Discover",
+            "story_2_link": "",
+            "background_color": "#f5f0e8",
+            "text_color": "#292724",
+            "placeholder_color": "#e9e1d4",
+            "heading_font": "cormorant_n4",
+            "body_font": "dm_sans_n4"
+          },
+          "blocks": {}
+        }
+      },
+      "block_order": [
+        "ai_gen_block_3ff2f93_8JaD4J"
+      ],
+      "settings": {}
+    },
+    "newsletter_4K3UJT": {
+      "type": "newsletter",
+      "blocks": {
+        "heading_HPi4Gh": {
+          "type": "heading",
+          "settings": {
+            "heading": "Subscribe to our emails",
+            "heading_size": "h1"
+          }
+        },
+        "paragraph_FQmHCp": {
+          "type": "paragraph",
+          "settings": {
+            "text": "<p>Be the first to know about new collections and exclusive offers.</p>"
+          }
+        },
+        "email_form_GQgbHg": {
+          "type": "email_form",
+          "settings": {}
+        }
+      },
+      "block_order": [
+        "heading_HPi4Gh",
+        "paragraph_FQmHCp",
+        "email_form_GQgbHg"
+      ],
+      "name": "t:sections.newsletter.presets.name",
+      "settings": {
+        "color_scheme": "background-2",
+        "full_width": true,
+        "padding_top": 40,
+        "padding_bottom": 52
+      }
+    }
+  },
+  "order": [
+    "6a3bb789-ce10-45f5-ae67-e2063ef8c76b",
+    "rich_text_4EQDXr",
+    "featured_collection",
+    "f1552b18-6017-4231-810d-74e61da22c37",
+    "38cdf60f-e431-43b5-aac3-7e6215447d67",
+    "rich_text_M3HRem",
+    "1790362919b7ce883a",
+    "newsletter_4K3UJT"
+  ]
+}

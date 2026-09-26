@@ -1,0 +1,140 @@
+{% doc %}
+  @prompt
+    A magazine-style editorial layout
+{% enddoc %}
+{% assign ai_gen_id = block.id | replace: '_', '' | downcase %}
+
+{% style %}
+  .ai-editorial-{{ ai_gen_id }} {
+    display: block;
+    width: {{ block.settings.desktop_width_percent }}%;
+    max-width: 100%;
+    margin-inline: auto;
+    padding: 40px;
+    color: {{ block.settings.text_color }};
+    background: {{ block.settings.background_color }};
+    font-family: {{ block.settings.body_font.family }}, {{ block.settings.body_font.fallback_families }};
+  }
+  .ai-editorial-{{ ai_gen_id }}__inner { max-width: 1320px; margin: 0 auto; }
+  .ai-editorial-{{ ai_gen_id }}__eyebrow { margin: 0 0 12px; font-size: 11px; letter-spacing: .18em; text-transform: uppercase; }
+  .ai-editorial-{{ ai_gen_id }}__title { margin: 0; max-width: 900px; font-family: {{ block.settings.heading_font.family }}, {{ block.settings.heading_font.fallback_families }}; font-size: clamp(42px, 7vw, {{ block.settings.title_size }}px); line-height: .98; font-weight: 500; letter-spacing: -.035em; }
+  .ai-editorial-{{ ai_gen_id }}__intro { max-width: 600px; margin: 18px 0 34px; font-size: 16px; line-height: 1.65; }
+  .ai-editorial-{{ ai_gen_id }}__grid { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(240px, .85fr); gap: 28px; align-items: start; }
+  .ai-editorial-{{ ai_gen_id }}__feature, .ai-editorial-{{ ai_gen_id }}__side { min-width: 0; }
+  .ai-editorial-{{ ai_gen_id }}__image { display: block; width: 100%; height: auto; aspect-ratio: 1.45; object-fit: cover; }
+  .ai-editorial-{{ ai_gen_id }}__placeholder { width: 100%; aspect-ratio: 1.45; background: {{ block.settings.placeholder_color }}; }
+  .ai-editorial-{{ ai_gen_id }}__placeholder svg { display: block; width: 100%; height: 100%; }
+  .ai-editorial-{{ ai_gen_id }}__empty { padding: 10px; text-align: center; font-size: 13px; color: {{ block.settings.text_color }}; opacity: .75; }
+  .ai-editorial-{{ ai_gen_id }}__caption { margin: 9px 0 0; font-size: 11px; line-height: 1.5; opacity: .8; }
+  .ai-editorial-{{ ai_gen_id }}__feature-copy { padding-top: 21px; border-top: 1px solid currentColor; margin-top: 17px; }
+  .ai-editorial-{{ ai_gen_id }}__kicker { margin: 0 0 9px; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; }
+  .ai-editorial-{{ ai_gen_id }}__feature-title { margin: 0 0 10px; font-family: {{ block.settings.heading_font.family }}, {{ block.settings.heading_font.fallback_families }}; font-size: clamp(27px, 3.5vw, 42px); line-height: 1.05; font-weight: 500; }
+  .ai-editorial-{{ ai_gen_id }}__body { font-size: 14px; line-height: 1.7; }
+  .ai-editorial-{{ ai_gen_id }}__body p { margin: 0 0 12px; }
+  .ai-editorial-{{ ai_gen_id }}__side { border-top: 1px solid currentColor; }
+  .ai-editorial-{{ ai_gen_id }}__story { padding: 22px 0; border-bottom: 1px solid currentColor; }
+  .ai-editorial-{{ ai_gen_id }}__story-image { display: block; width: 100%; aspect-ratio: 1.55; object-fit: cover; margin-bottom: 15px; }
+  .ai-editorial-{{ ai_gen_id }}__story-title { margin: 0 0 8px; font-family: {{ block.settings.heading_font.family }}, {{ block.settings.heading_font.fallback_families }}; font-size: 25px; line-height: 1.12; font-weight: 500; }
+  .ai-editorial-{{ ai_gen_id }}__story-copy { margin: 0; font-size: 13px; line-height: 1.6; }
+  .ai-editorial-{{ ai_gen_id }}__link { display: inline-block; margin-top: 13px; padding-bottom: 3px; color: inherit; text-decoration: none; border-bottom: 1px solid currentColor; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+  .ai-editorial-{{ ai_gen_id }}__link:focus-visible { outline: 2px solid currentColor; outline-offset: 4px; }
+  @media screen and (max-width: 749px) {
+    .ai-editorial-{{ ai_gen_id }} { padding: 28px 18px; }
+    .ai-editorial-{{ ai_gen_id }}__grid { grid-template-columns: 1fr; gap: 18px; }
+    .ai-editorial-{{ ai_gen_id }}__side { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 18px; }
+    .ai-editorial-{{ ai_gen_id }}__story { padding: 18px 0; }
+  }
+  @media screen and (max-width: 480px) {
+    .ai-editorial-{{ ai_gen_id }}__side { grid-template-columns: 1fr; }
+  }
+{% endstyle %}
+
+<section class="ai-editorial-{{ ai_gen_id }}" {{ block.shopify_attributes }}>
+  <div class="ai-editorial-{{ ai_gen_id }}__inner">
+    {% if block.settings.eyebrow != blank %}<p class="ai-editorial-{{ ai_gen_id }}__eyebrow">{{ block.settings.eyebrow | escape }}</p>{% endif %}
+    {% if block.settings.title != blank %}<h2 class="ai-editorial-{{ ai_gen_id }}__title">{{ block.settings.title | escape }}</h2>{% endif %}
+    {% if block.settings.intro != blank %}<div class="ai-editorial-{{ ai_gen_id }}__intro">{{ block.settings.intro }}</div>{% endif %}
+    <div class="ai-editorial-{{ ai_gen_id }}__grid">
+      <article class="ai-editorial-{{ ai_gen_id }}__feature">
+        {% if block.settings.feature_image != blank %}
+          <img class="ai-editorial-{{ ai_gen_id }}__image" src="{{ block.settings.feature_image | image_url: width: 1800 }}" alt="{{ block.settings.feature_image.alt | escape }}" loading="lazy" width="{{ block.settings.feature_image.width }}" height="{{ block.settings.feature_image.height }}">
+        {% else %}
+          <div class="ai-editorial-{{ ai_gen_id }}__placeholder">{{ 'image' | placeholder_svg_tag }}<div class="ai-editorial-{{ ai_gen_id }}__empty">Add a feature image to complete this editorial layout.</div></div>
+        {% endif %}
+        {% if block.settings.image_caption != blank %}<p class="ai-editorial-{{ ai_gen_id }}__caption">{{ block.settings.image_caption | escape }}</p>{% endif %}
+        <div class="ai-editorial-{{ ai_gen_id }}__feature-copy">
+          {% if block.settings.feature_kicker != blank %}<p class="ai-editorial-{{ ai_gen_id }}__kicker">{{ block.settings.feature_kicker | escape }}</p>{% endif %}
+          {% if block.settings.feature_title != blank %}<h3 class="ai-editorial-{{ ai_gen_id }}__feature-title">{{ block.settings.feature_title | escape }}</h3>{% endif %}
+          {% if block.settings.feature_copy != blank %}<div class="ai-editorial-{{ ai_gen_id }}__body">{{ block.settings.feature_copy }}</div>{% endif %}
+          {% if block.settings.feature_link != blank and block.settings.feature_link_label != blank %}<a class="ai-editorial-{{ ai_gen_id }}__link" href="{{ block.settings.feature_link }}">{{ block.settings.feature_link_label | escape }}</a>{% endif %}
+        </div>
+      </article>
+      <div class="ai-editorial-{{ ai_gen_id }}__side">
+        {% for i in (1..2) %}
+          {% liquid
+            assign story_image_key = 'story_' | append: i | append: '_image'
+            assign story_title_key = 'story_' | append: i | append: '_title'
+            assign story_copy_key = 'story_' | append: i | append: '_copy'
+            assign story_link_key = 'story_' | append: i | append: '_link'
+            assign story_label_key = 'story_' | append: i | append: '_link_label'
+            assign story_image = block.settings[story_image_key]
+            assign story_title = block.settings[story_title_key]
+            assign story_copy = block.settings[story_copy_key]
+            assign story_link = block.settings[story_link_key]
+            assign story_label = block.settings[story_label_key]
+          %}
+          <article class="ai-editorial-{{ ai_gen_id }}__story">
+            {% if story_image != blank %}<img class="ai-editorial-{{ ai_gen_id }}__story-image" src="{{ story_image | image_url: width: 900 }}" alt="{{ story_image.alt | escape }}" loading="lazy" width="{{ story_image.width }}" height="{{ story_image.height }}">{% endif %}
+            {% if story_title != blank %}<h3 class="ai-editorial-{{ ai_gen_id }}__story-title">{{ story_title | escape }}</h3>{% endif %}
+            {% if story_copy != blank %}<p class="ai-editorial-{{ ai_gen_id }}__story-copy">{{ story_copy | escape }}</p>{% endif %}
+            {% if story_link != blank and story_label != blank %}<a class="ai-editorial-{{ ai_gen_id }}__link" href="{{ story_link }}">{{ story_label | escape }}</a>{% endif %}
+          </article>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Editorial layout",
+  "settings": [
+    { "type": "header", "content": "Masthead" },
+    { "type": "text", "id": "eyebrow", "label": "Eyebrow", "default": "The journal" },
+    { "type": "text", "id": "title", "label": "Main title", "default": "Stories for considered living" },
+    { "type": "richtext", "id": "intro", "label": "Introduction", "default": "<p>Ideas, objects and points of view for making everyday life feel a little more intentional.</p>" },
+    { "type": "range", "id": "desktop_width_percent", "label": "Desktop width", "min": 50, "max": 100, "step": 5, "unit": "%", "default": 100 },
+    { "type": "range", "id": "title_size", "label": "Title size", "min": 48, "max": 96, "step": 4, "unit": "px", "default": 72 },
+    { "type": "header", "content": "Featured story" },
+    { "type": "image_picker", "id": "feature_image", "label": "Feature image" },
+    { "type": "text", "id": "image_caption", "label": "Image caption", "default": "A closer look at the details that make a space feel personal." },
+    { "type": "text", "id": "feature_kicker", "label": "Story category", "default": "At home" },
+    { "type": "text", "id": "feature_title", "label": "Story title", "default": "The quiet art of collecting well" },
+    { "type": "richtext", "id": "feature_copy", "label": "Story text", "default": "<p>Thoughtful materials and meaningful finds bring depth to a home. Discover a slower approach to choosing pieces that tell your story.</p>" },
+    { "type": "text", "id": "feature_link_label", "label": "Feature link label", "default": "Read the story" },
+    { "type": "url", "id": "feature_link", "label": "Feature link" },
+    { "type": "header", "content": "Side stories" },
+    { "type": "image_picker", "id": "story_1_image", "label": "Story one image" },
+    { "type": "text", "id": "story_1_title", "label": "Story one title", "default": "A palette inspired by nature" },
+    { "type": "textarea", "id": "story_1_copy", "label": "Story one summary", "default": "Earthy tones and tactile finishes bring warmth to the everyday." },
+    { "type": "text", "id": "story_1_link_label", "label": "Story one link label", "default": "Explore" },
+    { "type": "url", "id": "story_1_link", "label": "Story one link" },
+    { "type": "image_picker", "id": "story_2_image", "label": "Story two image" },
+    { "type": "text", "id": "story_2_title", "label": "Story two title", "default": "Objects with a second life" },
+    { "type": "textarea", "id": "story_2_copy", "label": "Story two summary", "default": "Meet the enduring pieces designed to be kept, used and loved." },
+    { "type": "text", "id": "story_2_link_label", "label": "Story two link label", "default": "Discover" },
+    { "type": "url", "id": "story_2_link", "label": "Story two link" },
+    { "type": "header", "content": "Colors and type" },
+    { "type": "color", "id": "background_color", "label": "Background", "default": "#F5F0E8" },
+    { "type": "color", "id": "text_color", "label": "Text", "default": "#292724" },
+    { "type": "color", "id": "placeholder_color", "label": "Image placeholder", "default": "#E9E1D4" },
+    { "type": "font_picker", "id": "heading_font", "label": "Heading font", "default": "cormorant_n4" },
+    { "type": "font_picker", "id": "body_font", "label": "Body font", "default": "dm_sans_n4" }
+  ],
+  "presets": [
+    { "name": "Editorial layout" }
+  ],
+  "tag": null,
+  "class": "editorial-layout-block"
+}
+{% endschema %}

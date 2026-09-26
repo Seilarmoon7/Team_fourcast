@@ -1,0 +1,118 @@
+/* Personal shopper: chat column, activity strip, and the room it builds. */
+:root {
+  --sh-cream: #f7f3ec; --sh-ink: #1f1d1a; --sh-body: #4a453e; --sh-muted: #7b746a; --sh-line: #d9d0c1;
+  --sh-char: #232220; --sh-mustard: #b8892f; --sh-rail: #1c1b19; --sh-rail-line: #34312c; --sh-rail-muted: #8f877b;
+  --sh-sage: #8fbfa9; --sh-strip: 42px; --sh-col: 380px;
+  --sh-mono: 'Space Mono', ui-monospace, Menlo, monospace;
+}
+
+/* ---------- layout: header on top, chat | page below, strip pinned ---------- */
+@media screen and (min-width: 750px) {
+  body.shopper-body { display: flex; flex-direction: column; height: 100dvh; overflow: hidden; }
+  .shopper-layout { flex: 1; min-height: 0; display: grid; grid-template-columns: var(--sh-col) minmax(0, 1fr); margin-bottom: var(--sh-strip); }
+  .shopper-layout > .shopify-section { min-height: 0; display: flex; }
+  .shopper-layout__page { min-width: 0; overflow-y: auto; }
+}
+@media screen and (max-width: 749px) {
+  body.shopper-body { padding-bottom: var(--sh-strip); }
+  .shopper { height: 70vh; }
+}
+
+/* ---------- chat column ---------- */
+.shopper { flex: 1; display: flex; flex-direction: column; min-height: 0; min-width: 0; background: var(--sh-cream); border-right: 1px solid var(--sh-line); font-family: var(--font-body-family); }
+.shopper__head { padding: 1.6rem 2.2rem 1.4rem; border-bottom: 1px solid var(--sh-line); }
+.shopper__title { font-family: var(--font-heading-family); font-weight: 600; font-size: 2.3rem; line-height: 1.1; color: var(--sh-ink); margin: 0; }
+.shopper__sub { font-size: 1.25rem; color: var(--sh-muted); margin: .3rem 0 0; line-height: 1.4; }
+.shopper__viewas { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-top: 1rem; }
+.shopper__viewas span { font-family: var(--sh-mono); font-size: .95rem; letter-spacing: .15rem; text-transform: uppercase; color: var(--sh-muted); margin-right: .2rem; }
+.shopper__viewas button { font: 600 1.15rem var(--font-body-family); padding: .3rem 1rem; border-radius: 99px; border: 1px solid var(--sh-line); background: transparent; color: var(--sh-body); cursor: pointer; }
+.shopper__viewas button[aria-pressed="true"] { background: var(--sh-char); border-color: var(--sh-char); color: #fff; }
+
+.shopper__log { flex: 1; min-height: 0; overflow-y: auto; padding: 1.8rem 2.2rem .8rem; }
+.shopper__msg { display: flex; flex-direction: column; margin-bottom: .6rem; animation: sh-rise .28s ease both; }
+.shopper__msg--me { align-items: flex-end; margin-top: 1.2rem; }
+.shopper__bub { padding: 1rem 1.4rem; border-radius: 1.4rem; max-width: 90%; font-size: 1.4rem; line-height: 1.55; }
+.shopper__msg--bot .shopper__bub { background: #fff; border: 1px solid var(--sh-line); color: var(--sh-ink); }
+.shopper__msg--me .shopper__bub { background: var(--sh-char); color: #f1ece3; }
+.shopper__bub p { margin: 0 0 .6rem; } .shopper__bub p:last-child { margin: 0; }
+.shopper__bub--err { border-color: #c0463a !important; color: #8a2f25 !important; }
+.shopper__starters { display: flex; flex-direction: column; align-items: flex-start; gap: .6rem; margin: .8rem 0 1rem; }
+.shopper__starters button { font: 1.25rem var(--font-body-family); color: var(--sh-body); background: #fff; border: 1px solid var(--sh-line); border-radius: 99px; padding: .5rem 1.2rem; cursor: pointer; text-align: left; }
+.shopper__starters button:hover { border-color: var(--sh-muted); color: var(--sh-ink); }
+.shopper__typing { display: flex; gap: .4rem; padding: .5rem .2rem; }
+.shopper__typing i { width: .6rem; height: .6rem; border-radius: 50%; background: var(--sh-muted); animation: sh-blink 1.2s infinite; }
+.shopper__typing i:nth-child(2) { animation-delay: .2s; } .shopper__typing i:nth-child(3) { animation-delay: .4s; }
+@keyframes sh-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes sh-blink { 0%, 60%, 100% { opacity: .25; } 30% { opacity: 1; } }
+
+.shopper__receipt { margin: .5rem 0 .8rem; max-width: 90%; animation: sh-rise .3s ease both; }
+.shopper__chip { display: inline-flex; align-items: center; gap: .7rem; font: 1rem var(--sh-mono); color: var(--sh-muted); background: transparent; border: 1px solid var(--sh-line); border-radius: 99px; padding: .4rem 1rem; cursor: pointer; }
+.shopper__chip:hover { color: var(--sh-ink); border-color: var(--sh-muted); }
+.shopper__chip b { font-weight: 400; transition: transform .2s; }
+.shopper__receipt.is-open .shopper__chip b { transform: rotate(90deg); }
+.shopper__rbody { display: none; margin-top: .7rem; background: var(--sh-rail); color: #e9e4da; border-radius: 1rem; padding: 1rem 1.2rem; }
+.shopper__receipt.is-open .shopper__rbody { display: block; }
+.shopper__rrow { display: grid; grid-template-columns: 8rem 1fr auto; gap: .8rem; padding: .5rem 0; border-bottom: 1px solid var(--sh-rail-line); font-size: 1.15rem; align-items: baseline; }
+.shopper__rrow:last-of-type { border-bottom: 0; }
+.shopper__rp { font: .95rem var(--sh-mono); letter-spacing: .1rem; text-transform: uppercase; color: var(--sh-sage); }
+.shopper__rc { font: 1rem var(--sh-mono); color: var(--sh-rail-muted); display: block; }
+.shopper__rv { color: #fff; line-height: 1.4; }
+.shopper__rms { font: .95rem var(--sh-mono); color: var(--sh-rail-muted); }
+.shopper__rnote { font-size: 1.1rem; color: #e0b063; margin-top: .8rem; line-height: 1.45; }
+
+.shopper__pay { display: inline-block; text-decoration: none; align-self: flex-start; margin-top: .6rem; background: var(--sh-char); color: #fff; border: 0; border-radius: 2px; padding: 1.3rem 2.2rem; font: 600 1.4rem var(--font-body-family); letter-spacing: .03rem; cursor: pointer; }
+.shopper__sim { align-self: flex-start; margin-top: .6rem; background: transparent; border: 0; padding: .4rem 0; font: 1.05rem var(--sh-mono); color: var(--sh-muted); text-decoration: underline; cursor: pointer; }
+.shopper__sim:disabled { text-decoration: none; cursor: default; }
+
+.shopper__bar { border-top: 1px solid var(--sh-line); padding: 1.2rem 1.6rem; display: flex; gap: .8rem; margin: 0; }
+.shopper__input { flex: 1; min-width: 0; padding: 1.1rem 1.3rem; border: 1px solid var(--sh-line); background: #fff; color: var(--sh-ink); font: 1.35rem var(--font-body-family); border-radius: 2px; }
+.shopper__input:focus { outline: none; }
+.shopper__send { padding: 1.1rem 1.8rem; border: 0; border-radius: 2px; background: var(--sh-char); color: #fff; font: 600 1.35rem var(--font-body-family); cursor: pointer; }
+.shopper__send:disabled { opacity: .3; cursor: default; }
+
+/* ---------- activity strip ---------- */
+.shopper-strip { position: fixed; left: 0; right: 0; bottom: 0; height: var(--sh-strip); z-index: 50; background: var(--sh-rail); display: flex; align-items: center; gap: 2.2rem; padding: 0 2rem; font-family: var(--font-body-family); }
+.shopper-strip__live { font: 700 .95rem var(--sh-mono); letter-spacing: .2rem; color: var(--sh-rail-muted); display: flex; align-items: center; gap: .7rem; }
+.shopper-strip__live i { width: .7rem; height: .7rem; border-radius: 50%; background: #c0463a; animation: sh-blink 1.6s infinite; }
+.shopper-strip__lamps { display: flex; gap: 1.8rem; }
+.shopper-strip__lamp { display: flex; align-items: center; gap: .7rem; font-size: 1.2rem; font-weight: 600; color: var(--sh-rail-muted); }
+.shopper-strip__lamp span { width: .8rem; height: .8rem; border-radius: 50%; background: #3d3830; transition: all .2s; }
+.shopper-strip__lamp.is-hot { color: #fff; }
+.shopper-strip__lamp.is-hot span { background: var(--sh-sage); box-shadow: 0 0 0 4px rgba(143, 191, 169, .2); }
+.shopper-strip__ticker { margin-left: auto; font: 1.1rem var(--sh-mono); color: var(--sh-rail-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 55%; }
+.shopper-strip__ticker b { color: var(--sh-sage); font-weight: 400; }
+.shopper-strip__ticker em { font-style: normal; color: #fff; }
+
+/* ---------- the room, built at the top of the page ---------- */
+.shopper-tucked { display: none; }
+.shopper-room { font-family: var(--font-body-family); color: var(--sh-ink); animation: sh-rise .45s ease both; }
+.shopper-room__intro { padding: 4rem 5rem 1rem; }
+.shopper-room__eyebrow { font-size: 1.1rem; letter-spacing: .24rem; text-transform: uppercase; color: var(--sh-mustard); font-weight: 600; }
+.shopper-room__title { font-family: var(--font-heading-family); font-weight: 500; font-size: 5rem; line-height: 1.05; margin: 1rem 0 0; }
+.shopper-room__sub { font-size: 1.6rem; margin-top: 1rem; max-width: 62rem; line-height: 1.6; }
+.shopper-room__offer { margin-top: 2.2rem; border-left: 3px solid var(--sh-mustard); background: #f7ecd6; padding: 1.2rem 1.6rem; display: flex; gap: 1.6rem; align-items: center; font-size: 1.4rem; }
+.shopper-room__offer b { font: 700 1.5rem var(--sh-mono); }
+.shopper-room__band { background: var(--sh-char); margin-top: 2.6rem; padding: 3rem 5rem 3.4rem; animation: sh-rise .4s ease both; }
+.shopper-room__bandhead { display: flex; align-items: baseline; justify-content: space-between; gap: 2rem; }
+.shopper-room__bandhead h3 { font-family: var(--font-heading-family); font-weight: 500; font-size: 3rem; color: #f1ece3; margin: 0; }
+.shopper-room__total { font-size: 1.5rem; color: #d8d2c6; }
+.shopper-room__total b { color: #fff; font-size: 2rem; margin-left: .6rem; }
+.shopper-room__total s { color: var(--sh-rail-muted); margin-left: .6rem; }
+.shopper-room__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(22rem, 1fr)); gap: 1.6rem; margin-top: 2rem; }
+.shopper-room__card { animation: sh-rise .4s ease both; color: #f1ece3; display: flex; flex-direction: column; }
+.shopper-room__card a { color: inherit; text-decoration: none; }
+.shopper-room__pick { margin-top: auto; align-self: flex-start; font: 600 1.25rem var(--font-body-family); color: #f1ece3; background: transparent; border: 1px solid #6a655c; border-radius: 2px; padding: .7rem 1.2rem; cursor: pointer; }
+.shopper-room__card .shopper-room__why { margin-bottom: 1.2rem; }
+.shopper-room__card.is-chosen .shopper-room__pick { background: var(--sh-mustard); border-color: var(--sh-mustard); color: var(--sh-char); }
+.shopper-room__buy { margin-top: 2.4rem; background: #f1ece3; color: var(--sh-char); border: 0; border-radius: 2px; padding: 1.3rem 2.2rem; font: 600 1.4rem var(--font-body-family); cursor: pointer; }
+.shopper-room__img { aspect-ratio: 5 / 4; display: flex; align-items: flex-end; padding: 1.2rem; background-size: cover; background-position: center; font: .95rem var(--sh-mono); letter-spacing: .1rem; text-transform: uppercase; color: rgba(255, 255, 255, .9); }
+.shopper-room__name { font-family: var(--font-heading-family); font-size: 2.2rem; line-height: 1.15; margin-top: 1.2rem; }
+.shopper-room__price { font-size: 1.5rem; margin-top: .4rem; }
+.shopper-room__why { color: #d9b56b; font-size: 1.3rem; margin-top: .6rem; line-height: 1.45; }
+.shopper-room__after { padding: 2.8rem 5rem 1rem; }
+.shopper-room__after h3 { font-family: var(--font-heading-family); font-weight: 500; font-size: 3rem; margin: 0 0 1.4rem; }
+.shopper-room__mail { border-top: 1px solid var(--sh-ink); padding: 1.3rem 0; display: grid; grid-template-columns: 7rem 1fr; gap: 1rem; animation: sh-rise .35s ease both; }
+.shopper-room__day { font-size: 1.1rem; letter-spacing: .16rem; text-transform: uppercase; color: var(--sh-muted); padding-top: .6rem; }
+.shopper-room__subject { font-family: var(--font-heading-family); font-size: 2.2rem; }
+.shopper-room__preview { font-size: 1.35rem; color: var(--sh-body); margin-top: .2rem; }
+.shopper-room__resume { margin: 3rem 5rem 2rem; padding-top: 1.4rem; border-top: 1px dashed var(--sh-line); font-size: 1.1rem; letter-spacing: .2rem; text-transform: uppercase; color: var(--sh-muted); text-align: center; }
