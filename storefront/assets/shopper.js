@@ -127,7 +127,7 @@
   async function ask(message, browsing = null) {
     message = (message || '').trim();
     if (!message || busy) return;
-    S.browsing = browsing;
+    S.browsing = browsing; S.missed = null;
     busy = true; send.disabled = true; input.value = '';
     log.querySelector('.shopper__starters')?.remove();
     if (!S.lastAsk) S.lastAsk = message;   // the room's brief is how the shopper first described it
@@ -164,7 +164,7 @@
 
       roomUpdate();
       if (Array.isArray(d.products) && d.products.length) await roomPicks(d.products);
-      else if (S.browsing) { S.browsing = null; render(); }   // nothing came back for that type
+      else if (S.browsing) { S.picks = []; S.missed = S.browsing; render(); }   // nothing came back for that type
       if (d.checkout_url) addCheckout(d.checkout_url, tools);
       ticker.textContent = 'idle · listening';
     } catch (err) {
@@ -280,6 +280,11 @@
   async function roomPicks(products) {
     S.picks = await Promise.all(products.map(async (p) => ({ ...p, ...(await lookup(p.sku)), sku: p.sku })));
     S.picks.forEach((p) => { p.type = typeOf(p.title, roomKey()); });
+    // Browsing one type shows only that type; the agent sometimes pads a failed search with other picks.
+    if (S.browsing) {
+      S.picks = S.picks.filter((p) => p.type === S.browsing);
+      if (!S.picks.length) S.missed = S.browsing;
+    }
     if (!ON_HOME) {
       addMsg('bot', '<a class="shopper__pay" href="/">See your room →</a>');
       return;
@@ -309,7 +314,12 @@
       ${S.picks.length ? '' : '<p class="shopper-room__hint">Pick a piece to browse, or tell me what you need.</p>'}</div>` : '';
 
     const band = room.querySelector('[data-band]');
-    if (!S.picks.length) band.innerHTML = '';
+    const missed = typeInfo(S.missed);
+    if (missed) band.innerHTML = `<div class="shopper-room__band"><div class="shopper-room__bandhead">
+        <h3>${esc(missed[2][0].toUpperCase() + missed[2].slice(1))}</h3></div>
+        <p class="shopper-room__empty">No ${esc(missed[2])} came back from the store this time.</p>
+        <button type="button" class="shopper-room__next" data-browse="${missed[0]}">Try again →</button></div>`;
+    else if (!S.picks.length) band.innerHTML = '';
     else {
       const types = [...new Set(S.picks.map((p) => p.type))];
       const open = typeInfo(S.browsing || (types.length === 1 ? types[0] : null));
@@ -327,7 +337,8 @@
           <a href="${esc(p.url || '#')}"><div class="shopper-room__img" style="${bg}">${p.image ? '' : esc([p.material, p.color].filter(Boolean).join(' · '))}</div></a>
           <div class="shopper-room__name">${esc(p.title)}</div><div class="shopper-room__price">${money(p.price)}</div>
           <div class="shopper-room__why">${esc([p.style, p.material].filter(Boolean).join(' · '))}</div>
-          <button type="button" class="shopper-room__pick" data-pick>${on ? 'In your room ✓' : 'Add to your room'}</button></div>`);
+          ${on ? '<div class="shopper-room__tag">✓ In your room</div>' : ''}
+          <button type="button" class="shopper-room__pick" data-pick>${on ? 'Remove' : 'Add to your room'}</button></div>`);
         if (animate) await wait(170);
       }
     }

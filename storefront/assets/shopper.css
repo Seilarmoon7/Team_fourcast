@@ -105,7 +105,10 @@ main.shopper-has-room > .shopify-section { display: none; }
 .shopper-room__card a { color: inherit; text-decoration: none; }
 .shopper-room__pick { margin-top: auto; align-self: flex-start; font: 600 1.25rem var(--font-body-family); color: #f1ece3; background: transparent; border: 1px solid #6a655c; border-radius: 2px; padding: .7rem 1.2rem; cursor: pointer; }
 .shopper-room__card .shopper-room__why { margin-bottom: 1.2rem; }
-.shopper-room__card.is-chosen .shopper-room__pick { background: var(--sh-mustard); border-color: var(--sh-mustard); color: var(--sh-char); }
+.shopper-room__tag { font: 600 1.3rem var(--font-body-family); color: var(--sh-mustard); margin: auto 0 .8rem; }
+.shopper-room__tag + .shopper-room__pick { margin-top: 0; }
+.shopper-room__card.is-chosen .shopper-room__pick { color: #d8d2c6; border-color: #4a463f; font-weight: 500; }
+.shopper-room__empty { font-size: 1.5rem; color: #d8d2c6; margin: 1.6rem 0 0; }
 .shopper-room__bandhead span { font-size: 1.4rem; color: #d8d2c6; }
 .shopper-room__plan { margin-top: 2.6rem; }
 .shopper-room__planhead { font: 600 1.1rem var(--sh-mono); letter-spacing: .16rem; text-transform: uppercase; color: var(--sh-ink); opacity: .7; }
