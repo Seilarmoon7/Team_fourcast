@@ -268,8 +268,8 @@
     room.hidden = false;
     room.innerHTML = `<div class="shopper-room__intro"><div class="shopper-room__top"><div class="shopper-room__eyebrow">Built for ${esc(firstName())}</div>
       <button type="button" class="shopper-room__restart" data-restart>Start over</button></div>
-      <h2 class="shopper-room__title"></h2><p class="shopper-room__sub"></p><div data-offer></div><div data-plan></div></div>
-      <div data-band></div><div data-bar></div><div data-after></div>`;
+      <h2 class="shopper-room__title"></h2><p class="shopper-room__sub"></p><div data-offer></div><div data-plan></div><div data-list></div></div>
+      <div data-band></div><div data-after></div>`;
     page.scrollTop = 0;
   }
   function roomUpdate() {
@@ -304,8 +304,7 @@
       <div class="shopper-room__slots">${ordered.map(([k, label]) => {
         const got = inRoom(k);
         const cls = [sug.includes(k) && 'is-suggested', got.length && 'is-filled', S.browsing === k && 'is-open'].filter(Boolean).join(' ');
-        return `<button type="button" class="shopper-room__slot ${cls}" data-browse="${k}"><b>${got.length ? '✓ ' : sug.includes(k) ? '' : '+ '}${esc(label)}</b>${got.length
-          ? `<span>${esc(got[0].title)}${got.length > 1 ? ` +${got.length - 1}` : ''}</span>` : ''}</button>`;
+        return `<button type="button" class="shopper-room__slot ${cls}" data-browse="${k}"><b>${got.length ? '✓ ' : sug.includes(k) ? '' : '+ '}${esc(label)}</b></button>`;
       }).join('')}</div>
       ${S.picks.length ? '' : '<p class="shopper-room__hint">Pick a piece to browse, or tell me what you need.</p>'}</div>` : '';
 
@@ -335,8 +334,17 @@
 
     const total = S.chosen.reduce((a, p) => a + Number(p.price || 0), 0);
     const c = S.chosen.length;
-    room.querySelector('[data-bar]').innerHTML = c ? `<div class="shopper-room__bar"><span>Your room · ${c} piece${c > 1 ? 's' : ''}</span>
-      <b>${money(total)}</b><button type="button" class="shopper-room__buy" data-buy>Check out your room →</button></div>` : '';
+    // Everything chosen so far, in the plan's order: what the shopper will check out.
+    const rank = (p) => { const i = plan.findIndex((t) => t[0] === p.type); return i < 0 ? plan.length : i; };
+    room.querySelector('[data-list]').innerHTML = c ? `<div class="shopper-room__list">
+      <div class="shopper-room__planhead">Your room so far</div>
+      ${[...S.chosen].sort((a, b) => rank(a) - rank(b)).map((p) => `<div class="shopper-room__row">
+        <span class="shopper-room__rowtype">${esc((typeInfo(p.type) || [, 'Piece'])[1])}</span>
+        <a class="shopper-room__rowname" href="${esc(p.url || '#')}">${esc(p.title)}</a>
+        <span class="shopper-room__rowprice">${money(p.price)}</span>
+        <button type="button" class="shopper-room__remove" data-remove="${esc(p.sku)}">Remove</button></div>`).join('')}
+      <div class="shopper-room__listfoot"><span>${c} piece${c > 1 ? 's' : ''}</span><b>${money(total)}</b>
+        <button type="button" class="shopper-room__buy" data-buy>Check out your room →</button></div></div>` : '';
   }
   function roomPaid(order) {
     if (!ON_HOME) return document.createElement('div');
@@ -380,6 +388,9 @@
     if (t.hasAttribute('data-browse')) {
       const [k, , plural] = typeInfo(t.dataset.browse);
       ask(`Show me ${plural} for my ${roomKey() || 'room'}`, k);
+    } else if (t.hasAttribute('data-remove')) {
+      S.chosen = S.chosen.filter((p) => p.sku !== t.dataset.remove);
+      render(); save();
     } else if (t.hasAttribute('data-pick')) {
       const sku = t.closest('[data-sku]').dataset.sku;
       S.chosen = S.chosen.some((p) => p.sku === sku) ? S.chosen.filter((p) => p.sku !== sku) : [...S.chosen, S.picks.find((p) => p.sku === sku)];
