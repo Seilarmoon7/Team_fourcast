@@ -227,7 +227,7 @@
     room.hidden = false;
     room.innerHTML = `<div class="shopper-room__intro"><div class="shopper-room__top"><div class="shopper-room__eyebrow">Built for ${esc(firstName())}</div>
       <button type="button" class="shopper-room__restart" data-restart>Start over</button></div>
-      <h2 class="shopper-room__title"></h2><p class="shopper-room__sub"></p><div data-offer></div><div data-list></div></div>
+      <h2 class="shopper-room__title"></h2><p class="shopper-room__sub"></p><p class="shopper-room__empty" hidden>Talk with our personal shopper to start. Pieces picked for you show up here.</p><div data-offer></div><div data-list></div></div>
       <div data-band></div><div data-after></div>`;
     page.scrollTop = 0;
   }
@@ -249,6 +249,7 @@
     roomShell();
     room.querySelector('.shopper-room__title').textContent = roomTitle();
     room.querySelector('.shopper-room__sub').textContent = roomSub();
+    room.querySelector('.shopper-room__empty').hidden = !!(S.picks.length || S.chosen.length);
     const offer = S.profile && S.profile.retention_offer;
     room.querySelector('[data-offer]').innerHTML = offer
       ? `<div class="shopper-room__offer"><b>${esc(offer.code)}</b>Applied automatically when you check out.</div>` : '';
