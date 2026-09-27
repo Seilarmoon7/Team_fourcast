@@ -162,6 +162,7 @@ class Toolbox:
     def _live(self, items: list[dict], limit: int) -> list[dict]:
         """Attach live Shopify price/stock; keep only purchasable items."""
         ids = [c["variant_id"] for c in items[: limit * 3]]
+        self.shopify_down = False   # reflects this lookup only, not an earlier one this turn
         live = None
         for attempt in (1, 2):
             try:

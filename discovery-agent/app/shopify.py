@@ -7,6 +7,7 @@ bundled as catalog.json, whose item_id == Shopify SKU.
 from __future__ import annotations
 
 import json
+import time
 from urllib.parse import quote
 
 import httpx
@@ -17,6 +18,11 @@ class ShopifyError(RuntimeError):
 
 
 class ShopifyStorefront:
+    # The UCP endpoint rate-limits (HTTP 429). Price and stock don't move within a demo, so variant
+    # lookups are cached briefly and a 429 waits for Retry-After (capped) before one retry.
+    CACHE_TTL_S = 60.0
+    MAX_RETRY_WAIT_S = 2.0
+
     def __init__(self, shop_domain: str, agent_profile: str, timeout_s: float = 8.0,
                  transport: httpx.BaseTransport | None = None) -> None:
         self.shop = shop_domain
@@ -24,6 +30,7 @@ class ShopifyStorefront:
         self._profile = agent_profile
         self._http = httpx.Client(timeout=timeout_s, transport=transport)
         self._id = 0
+        self._cache: dict[str, tuple[float, dict]] = {}
 
     def _call(self, tool: str, catalog_args: dict) -> dict:
         self._id += 1
@@ -31,6 +38,13 @@ class ShopifyStorefront:
                 "params": {"name": tool, "arguments": {
                     "meta": {"ucp-agent": {"profile": self._profile}}, "catalog": catalog_args}}}
         r = self._http.post(self._url, json=body)
+        if r.status_code == 429:
+            try:
+                wait = float(r.headers.get("retry-after", 1))
+            except ValueError:
+                wait = 1.0
+            time.sleep(min(max(wait, 0.0), self.MAX_RETRY_WAIT_S))
+            r = self._http.post(self._url, json=body)
         if r.status_code != 200:
             raise ShopifyError(f"{tool}: HTTP {r.status_code} {r.text[:200]}")
         payload = r.json()
@@ -43,10 +57,12 @@ class ShopifyStorefront:
 
     def lookup_variants(self, variant_ids: list[str]) -> dict[str, dict]:
         """variant numeric id -> {sku, title, price, available, checkout_url}"""
-        if not variant_ids:
-            return {}
-        data = self._call("lookup_catalog", {"ids": [f"gid://shopify/ProductVariant/{v}" for v in variant_ids]})
-        out: dict[str, dict] = {}
+        now = time.monotonic()
+        out = {v: hit[1] for v in variant_ids if (hit := self._cache.get(v)) and now - hit[0] < self.CACHE_TTL_S}
+        missing = [v for v in variant_ids if v not in out]
+        if not missing:
+            return out
+        data = self._call("lookup_catalog", {"ids": [f"gid://shopify/ProductVariant/{v}" for v in missing]})
         for p in data.get("products", []):
             for v in p.get("variants", []):
                 vid = v["id"].rsplit("/", 1)[-1]
@@ -58,6 +74,7 @@ class ShopifyStorefront:
                     "available": bool(v.get("availability", {}).get("available")),
                     "checkout_url": v.get("checkout_url"),
                 }
+                self._cache[vid] = (now, out[vid])
         return out
 
     def search(self, query: str, limit: int = 10) -> list[dict]:

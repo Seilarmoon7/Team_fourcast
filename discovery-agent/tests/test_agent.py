@@ -371,3 +371,38 @@ def test_demo_shopper_gets_their_databricks_email(monkeypatch, mocks):
     monkeypatch.setattr(main, "get_store", lambda: store)
     r = TestClient(main.app).post("/api/chat", json={"message": "hi", "shopper": "lashawna"}).json()
     assert r["email"] == "lashawna.cunningham.0036@example.test"
+
+
+def test_rate_limited_lookup_waits_then_retries(mocks, monkeypatch):
+    monkeypatch.setattr("app.shopify.time.sleep", lambda s: None)
+    first = []
+    def limited_once(request):
+        if not first:
+            first.append(1)
+            return httpx.Response(429, headers={"Retry-After": "1"}, json={"error": "Rate limit exceeded"})
+        return ucp_response(request)
+    mocks["router"].post(UCP).mock(side_effect=limited_once)
+    agent = make([])
+    out = Toolbox(Journey(), agent.shop, agent.br, agent.features, agent.s).find_products("sofa")
+    assert out["products"] and "error" not in out
+
+
+def test_repeat_lookups_are_served_from_cache(mocks):
+    agent = make([])
+    route = mocks["router"].post(UCP).mock(side_effect=ucp_response)
+    agent.shop.lookup_variants(["51799233265700"])
+    agent.shop.lookup_variants(["51799233265700"])
+    assert route.call_count == 1
+
+
+def test_later_search_is_not_marked_failed_by_an_earlier_one(mocks):
+    calls = []
+    def fail_first_two(request):
+        calls.append(1)
+        return httpx.Response(503) if len(calls) <= 2 else ucp_response(request)
+    mocks["router"].post(UCP).mock(side_effect=fail_first_two)
+    agent = make([])
+    t = Toolbox(Journey(), agent.shop, agent.br, agent.features, agent.s)
+    assert "error" in t.find_products("sofa")
+    later = t.find_products("rug")
+    assert later["products"] and "error" not in later
