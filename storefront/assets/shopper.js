@@ -362,7 +362,7 @@
 
   // Restore the conversation after navigating to another page, or start fresh.
   /* ---------- nav ---------- */
-  // "Your room" is rendered after Home by sections/header.liquid; only its active state is set here.
+  // The "Your room" button next to the cart is rendered by sections/header.liquid; only its active state is set here.
   const homeLinks = [...document.querySelectorAll('.header__inline-menu a[href="/"], .menu-drawer__menu a[href="/"]')];
   const roomLinks = [...document.querySelectorAll('[data-room-link]')];
   function markNav() {
