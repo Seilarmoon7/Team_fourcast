@@ -362,18 +362,9 @@
 
   // Restore the conversation after navigating to another page, or start fresh.
   /* ---------- nav ---------- */
-  // "Your room" sits after Home in the header and mobile menus, on every page.
+  // "Your room" is rendered after Home by sections/header.liquid; only its active state is set here.
   const homeLinks = [...document.querySelectorAll('.header__inline-menu a[href="/"], .menu-drawer__menu a[href="/"]')];
-  const roomLinks = homeLinks.map((home) => {
-    const li = home.closest('li').cloneNode(true);
-    const a = li.querySelector('a');
-    a.href = '/' + ROOM_HASH;
-    a.removeAttribute('aria-current');
-    a.classList.remove('menu-drawer__menu-item--active');
-    (a.querySelector('span') || a).textContent = 'Your room';
-    home.closest('li').after(li);
-    return a;
-  });
+  const roomLinks = [...document.querySelectorAll('[data-room-link]')];
   function markNav() {
     if (!ON_HOME) return;
     const on = inRoom();

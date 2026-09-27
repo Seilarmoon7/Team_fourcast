@@ -225,6 +225,13 @@
                           </a>
                         {%- endif -%}
                       </li>
+                      {%- if link.url == routes.root_url -%}
+                        <li>
+                          <a href="{{ routes.root_url }}#room" class="menu-drawer__menu-item list-menu__item link link--text focus-inset" data-room-link>
+                            Your room
+                          </a>
+                        </li>
+                      {%- endif -%}
                     {%- endfor -%}
                   </ul>
                 </nav>
@@ -510,6 +517,13 @@
                   </a>
                 {%- endif -%}
               </li>
+              {%- if link.url == routes.root_url -%}
+                <li>
+                  <a href="{{ routes.root_url }}#room" class="header__menu-item list-menu__item link link--text focus-inset" data-room-link>
+                    <span>Your room</span>
+                  </a>
+                </li>
+              {%- endif -%}
             {%- endfor -%}
           </ul>
         </nav>
@@ -555,6 +569,13 @@
                   </a>
                 {%- endif -%}
               </li>
+              {%- if link.url == routes.root_url -%}
+                <li>
+                  <a href="{{ routes.root_url }}#room" class="header__menu-item list-menu__item link link--text focus-inset" data-room-link>
+                    <span>Your room</span>
+                  </a>
+                </li>
+              {%- endif -%}
             {%- endfor -%}
           </ul>
         </nav>
