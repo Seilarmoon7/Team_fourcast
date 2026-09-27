@@ -17,6 +17,7 @@
   const ACCOUNT_EMAIL = root.dataset.email || null;
   // The room is built on the homepage only; other pages keep their own content.
   const ON_HOME = root.dataset.template === 'index';
+  const ROOM_HASH = '#room';
 
   const PN = { google: 'Gemini', databricks: 'Databricks', bloomreach: 'Bloomreach', shopify: 'Shopify' };
   // Which platform each agent tool touches.
@@ -224,27 +225,38 @@
     return bits.length ? bits.join(' · ') : S.lastAsk ? `“${S.lastAsk}”` : '';
   }
   function roomShell() {
-    if (!room.hidden) return;
-    room.closest('main').classList.add('shopper-has-room');
-    room.hidden = false;
+    if (room.innerHTML) return;
     room.innerHTML = `<div class="shopper-room__intro"><div class="shopper-room__top"><div class="shopper-room__eyebrow">Built for ${esc(firstName())}</div>
       <button type="button" class="shopper-room__restart" data-restart>Start over</button></div>
       <h2 class="shopper-room__title"></h2><p class="shopper-room__sub"></p><p class="shopper-room__empty" hidden>Talk with our personal shopper to start. Pieces picked for you show up here.</p><div data-offer></div></div>
       <div data-band></div><div class="shopper-room__listwrap" data-list></div><div data-after></div>`;
-    page.scrollTop = 0;
+  }
+  // The homepage has two views: the store's own sections at /, and the room at /#room.
+  const inRoom = () => ON_HOME && location.hash === ROOM_HASH;
+  function showView() {
+    const on = inRoom();
+    if (on && room.hidden) { render(); page.scrollTop = 0; }
+    room.hidden = !on;
+    room.closest('main').classList.toggle('shopper-has-room', on);
+    markNav();
+  }
+  function goRoom() {
+    if (inRoom()) return;
+    history.pushState(null, '', ROOM_HASH);
+    showView();
   }
   function roomUpdate() {
     if (!ON_HOME) return;
     if (!S.profile && !Object.keys(S.prefs).length && !S.picks.length) return;
-    render();
+    render(); goRoom();
   }
   async function roomPicks(products) {
     S.picks = await Promise.all(products.map(async (p) => ({ ...p, ...(await lookup(p.sku)), sku: p.sku })));
     if (!ON_HOME) {
-      addMsg('bot', '<a class="shopper__pay" href="/">See your room →</a>');
+      addMsg('bot', `<a class="shopper__pay" href="/${ROOM_HASH}">See your room →</a>`);
       return;
     }
-    await render(true);
+    await render(true); goRoom();
   }
   async function render(animate = false) {
     if (!ON_HOME) return;
@@ -289,6 +301,7 @@
   }
   function roomPaid(order) {
     if (!ON_HOME) return document.createElement('div');
+    render(); goRoom();
     const a = room.querySelector('[data-after]');
     a.innerHTML = `<div class="shopper-room__after"><h3>Order ${esc(order)}: what we'll email you</h3>
       <p class="shopper-room__afternote">Bloomreach sends these once Shopify confirms payment.</p><div data-mails></div></div>`;
@@ -308,8 +321,8 @@
     log.innerHTML = '';
     strip.querySelectorAll('.is-hot').forEach((l) => l.classList.remove('is-hot'));
     ticker.textContent = 'idle · waiting for a shopper';
-    room.hidden = true; room.innerHTML = '';
-    room.closest('main').classList.remove('shopper-has-room');
+    room.innerHTML = '';
+    if (inRoom()) render();
     markShopper(); starters(); save();
   }
   function markShopper() {
@@ -347,8 +360,43 @@
   });
 
   // Restore the conversation after navigating to another page, or start fresh.
+  /* ---------- nav ---------- */
+  // "Your room" sits after Home in the header and mobile menus, on every page.
+  const homeLinks = [...document.querySelectorAll('.header__inline-menu a[href="/"], .menu-drawer__menu a[href="/"]')];
+  const roomLinks = homeLinks.map((home) => {
+    const li = home.closest('li').cloneNode(true);
+    const a = li.querySelector('a');
+    a.href = '/' + ROOM_HASH;
+    a.removeAttribute('aria-current');
+    a.classList.remove('menu-drawer__menu-item--active');
+    (a.querySelector('span') || a).textContent = 'Your room';
+    home.closest('li').after(li);
+    return a;
+  });
+  function markNav() {
+    if (!ON_HOME) return;
+    const on = inRoom();
+    const mark = (a, active) => {
+      if (active) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+      const span = a.querySelector('span');
+      if (span) span.classList.toggle('header__active-menu-item', active);
+      if (a.classList.contains('menu-drawer__menu-item')) a.classList.toggle('menu-drawer__menu-item--active', active);
+    };
+    homeLinks.forEach((a) => mark(a, !on));
+    roomLinks.forEach((a) => mark(a, on));
+  }
+  // On the homepage, Home and Your room switch views in place instead of reloading.
+  document.addEventListener('click', (e) => {
+    const a = e.target.closest('a[href="/"]');
+    if (!ON_HOME || !a || root.contains(a) || room.contains(a)) return;
+    e.preventDefault();
+    if (inRoom()) { history.pushState(null, '', '/'); showView(); }
+  });
+  window.addEventListener('popstate', showView);
+  window.addEventListener('hashchange', showView);
+
   if (S.log) {
     log.innerHTML = S.log; toBottom(log); markShopper();
-    roomUpdate();
   } else reset(S.shopper);
+  showView();
 })();
