@@ -238,6 +238,7 @@
     if (on && room.hidden) { render(); page.scrollTop = 0; }
     room.hidden = !on;
     room.closest('main').classList.toggle('shopper-has-room', on);
+    document.documentElement.classList.remove('shopper-room-view');
     markNav();
   }
   function goRoom() {
