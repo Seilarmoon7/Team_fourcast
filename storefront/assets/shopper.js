@@ -324,6 +324,13 @@
     else if (t.hasAttribute('data-receipt')) { t.parentElement.classList.toggle('is-open'); toBottom(log); }
     else if (t.hasAttribute('data-simulate')) simulatePaid(t);
   });
+  // The store's Home links (menu, logo, footer) start over, like the room's Start over button.
+  document.addEventListener('click', (e) => {
+    const a = e.target.closest('a[href="/"]');
+    if (!a || root.contains(a) || room.contains(a) || busy) return;
+    reset(S.shopper);
+    if (ON_HOME) e.preventDefault();
+  });
   room.addEventListener('click', (e) => {
     const t = e.target.closest('button');
     if (!t) return;
