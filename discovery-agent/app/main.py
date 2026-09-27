@@ -9,6 +9,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
@@ -61,6 +62,10 @@ def get_agent() -> DiscoveryAgent:
 
 
 app = FastAPI(title="t6-discovery-agent")
+# The storefront theme calls /api/chat from the shop's own domain (and from `shopify theme dev` locally).
+app.add_middleware(CORSMiddleware,
+                   allow_origins=["https://team-fourcast.myshopify.com", "http://127.0.0.1:9292"],
+                   allow_methods=["POST"], allow_headers=["Content-Type"])
 INDEX = (Path(__file__).parent / "static" / "index.html").read_text()
 
 
