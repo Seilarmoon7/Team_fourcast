@@ -123,11 +123,9 @@
     return `Churn ${churn.toFixed(3)} is below ${thr}. No code.`;
   }
 
-  // `browsing` is the piece type the shopper opened from the room, if the message came from there.
-  async function ask(message, browsing = null) {
+  async function ask(message) {
     message = (message || '').trim();
     if (!message || busy) return;
-    S.browsing = browsing; S.missed = null;
     busy = true; send.disabled = true; input.value = '';
     log.querySelector('.shopper__starters')?.remove();
     if (!S.lastAsk) S.lastAsk = message;   // the room's brief is how the shopper first described it
@@ -164,7 +162,6 @@
 
       roomUpdate();
       if (Array.isArray(d.products) && d.products.length) await roomPicks(d.products);
-      else if (S.browsing) { S.picks = []; S.missed = S.browsing; render(); }   // nothing came back for that type
       if (d.checkout_url) addCheckout(d.checkout_url, tools);
       ticker.textContent = 'idle · listening';
     } catch (err) {
@@ -209,53 +206,10 @@
   }
 
   /* ---------- room ---------- */
-  // Piece types a room is planned around, matched against product titles in this order.
-  // [key, label, plural, title pattern]
-  const PLANS = {
-    'living room': [
-      ['sofa', 'Sofa', 'sofas', /sofa|loveseat|sectional|daybed/i],
-      ['chair', 'Accent chair', 'accent chairs', /chair/i],
-      ['coffee', 'Coffee table', 'coffee tables', /coffee table/i],
-      ['side', 'Side table', 'side tables', /side table/i],
-      ['rug', 'Rug', 'rugs', /\brug\b|carpet|\bmat\b/i],
-      ['light', 'Lighting', 'lamps', /lamp|light/i],
-      ['throw', 'Throws & cushions', 'throws and cushions', /throw|cushion/i],
-      ['curtains', 'Curtains', 'curtains', /curtain/i],
-      ['storage', 'Media & shelving', 'media consoles and shelving', /console|shelving|bookshelf|tv stand/i],
-      ['decor', 'Decor', 'decor pieces', /\bart\b|print|planter|vase|candle|mirror|\bfig\b/i],
-    ],
-    bedroom: [
-      ['duvet', 'Duvet cover', 'duvet cover sets', /duvet/i],
-      ['sheet', 'Sheets', 'sheets', /sheet|underlay|backing/i],
-      ['spread', 'Bedspread', 'bedspreads', /bedspread|day cover|cover day/i],
-      ['bedside', 'Bedside table', 'bedside tables', /bedside/i],
-    ],
-  };
-  // Where to start when the agent hasn't said which pieces matter.
-  const STARTS = { 'living room': ['sofa', 'rug', 'light', 'coffee'], bedroom: ['duvet', 'sheet', 'spread'] };
-  const typeOf = (text, key) => ((PLANS[key] || Object.values(PLANS).flat()).find((t) => t[3].test(text || '')) || [null])[0];
-  const typeInfo = (k) => Object.values(PLANS).flat().find((t) => t[0] === k);
-
-  function roomKey() {
-    if (S.room) return S.room;
-    const said = String(S.prefs.room || '').toLowerCase();
-    const found = PLANS[said] ? said
-      : [...S.chosen, ...S.picks].map((p) => String(p.room || '').toLowerCase()).find((r) => PLANS[r])
-      || Object.keys(PLANS).find((k) => String(S.lastAsk || '').toLowerCase().includes(k));
-    if (found) S.room = found;
-    return found || null;
-  }
-  // Piece types to steer toward: what the agent said matters, else a sensible start for the room.
-  function suggested(key) {
-    const plan = PLANS[key] || [];
-    const said = [...(S.prefs.pieces || []).map((w) => typeOf(w, key)), ...S.picks.map((p) => p.type)].filter(Boolean);
-    const keys = [...new Set(said.length ? said : STARTS[key] || [])];
-    return keys.filter((k) => plan.some((t) => t[0] === k));
-  }
-
+  // The room shows what the agent picked this turn; the shopper adds pieces to a running list.
   const firstName = () => (S.shopper === 'guest' ? (S.profile && S.profile.first_name) || 'you' : SHOPPERS[S.shopper]);
   function roomTitle() {
-    const where = S.prefs.room || roomKey();
+    const where = S.prefs.room || ([...S.chosen, ...S.picks].find((p) => p.room) || {}).room;
     return where ? `${firstName() === 'you' ? 'Your' : firstName() + "'s"} ${where}` : 'Your room';
   }
   function roomSub() {
@@ -268,7 +222,7 @@
     room.hidden = false;
     room.innerHTML = `<div class="shopper-room__intro"><div class="shopper-room__top"><div class="shopper-room__eyebrow">Built for ${esc(firstName())}</div>
       <button type="button" class="shopper-room__restart" data-restart>Start over</button></div>
-      <h2 class="shopper-room__title"></h2><p class="shopper-room__sub"></p><div data-offer></div><div data-plan></div><div data-list></div></div>
+      <h2 class="shopper-room__title"></h2><p class="shopper-room__sub"></p><div data-offer></div><div data-list></div></div>
       <div data-band></div><div data-after></div>`;
     page.scrollTop = 0;
   }
@@ -279,56 +233,27 @@
   }
   async function roomPicks(products) {
     S.picks = await Promise.all(products.map(async (p) => ({ ...p, ...(await lookup(p.sku)), sku: p.sku })));
-    S.picks.forEach((p) => { p.type = typeOf(p.title, roomKey()); });
-    // Browsing one type shows only that type; the agent sometimes pads a failed search with other picks.
-    if (S.browsing) {
-      S.picks = S.picks.filter((p) => p.type === S.browsing);
-      if (!S.picks.length) S.missed = S.browsing;
-    }
     if (!ON_HOME) {
       addMsg('bot', '<a class="shopper__pay" href="/">See your room →</a>');
       return;
     }
     await render(true);
   }
-  // The room is drawn from state: the plan of piece types, the type being browsed, and what's chosen.
   async function render(animate = false) {
     if (!ON_HOME) return;
     roomShell();
-    const key = roomKey(), plan = PLANS[key] || [], sug = suggested(key);
-    const inRoom = (k) => S.chosen.filter((p) => p.type === k);
     room.querySelector('.shopper-room__title').textContent = roomTitle();
     room.querySelector('.shopper-room__sub').textContent = roomSub();
     const offer = S.profile && S.profile.retention_offer;
     room.querySelector('[data-offer]').innerHTML = offer
       ? `<div class="shopper-room__offer"><b>${esc(offer.code)}</b>Applied automatically when you check out.</div>` : '';
 
-    const ordered = [...sug.map((k) => plan.find((t) => t[0] === k)), ...plan.filter((t) => !sug.includes(t[0]))];
-    room.querySelector('[data-plan]').innerHTML = plan.length ? `<div class="shopper-room__plan">
-      <div class="shopper-room__planhead">What this room needs</div>
-      <div class="shopper-room__slots">${ordered.map(([k, label]) => {
-        const got = inRoom(k);
-        const cls = [sug.includes(k) && 'is-suggested', got.length && 'is-filled', S.browsing === k && 'is-open'].filter(Boolean).join(' ');
-        return `<button type="button" class="shopper-room__slot ${cls}" data-browse="${k}"><b>${got.length ? '✓ ' : sug.includes(k) ? '' : '+ '}${esc(label)}</b></button>`;
-      }).join('')}</div>
-      ${S.picks.length ? '' : '<p class="shopper-room__hint">Pick a piece to browse, or tell me what you need.</p>'}</div>` : '';
-
     const band = room.querySelector('[data-band]');
-    const missed = typeInfo(S.missed);
-    if (missed) band.innerHTML = `<div class="shopper-room__band"><div class="shopper-room__bandhead">
-        <h3>${esc(missed[2][0].toUpperCase() + missed[2].slice(1))}</h3></div>
-        <p class="shopper-room__empty">No ${esc(missed[2])} came back from the store this time.</p>
-        <button type="button" class="shopper-room__next" data-browse="${missed[0]}">Try again →</button></div>`;
-    else if (!S.picks.length) band.innerHTML = '';
+    if (!S.picks.length) band.innerHTML = '';
     else {
-      const types = [...new Set(S.picks.map((p) => p.type))];
-      const open = typeInfo(S.browsing || (types.length === 1 ? types[0] : null));
-      const next = typeInfo(sug.find((k) => k !== (open && open[0]) && !inRoom(k).length));
       const n = S.picks.length;
       band.innerHTML = `<div class="shopper-room__band${animate ? ' is-new' : ''}"><div class="shopper-room__bandhead">
-        <h3>${esc(open ? open[2][0].toUpperCase() + open[2].slice(1) : 'Suggestions')}</h3><span>${n} option${n > 1 ? 's' : ''}</span></div>
-        <div class="shopper-room__grid"></div>
-        ${next ? `<button type="button" class="shopper-room__next" data-browse="${next[0]}">Next: ${esc(next[2])} →</button>` : ''}</div>`;
+        <h3>Picked for you</h3><span>${n} piece${n > 1 ? 's' : ''}</span></div><div class="shopper-room__grid"></div></div>`;
       const grid = band.querySelector('.shopper-room__grid');
       for (const p of S.picks) {
         const on = S.chosen.some((c) => c.sku === p.sku);
@@ -343,14 +268,12 @@
       }
     }
 
+    // Everything chosen so far: what the shopper will check out.
     const total = S.chosen.reduce((a, p) => a + Number(p.price || 0), 0);
     const c = S.chosen.length;
-    // Everything chosen so far, in the plan's order: what the shopper will check out.
-    const rank = (p) => { const i = plan.findIndex((t) => t[0] === p.type); return i < 0 ? plan.length : i; };
     room.querySelector('[data-list]').innerHTML = c ? `<div class="shopper-room__list">
-      <div class="shopper-room__planhead">Your room so far</div>
-      ${[...S.chosen].sort((a, b) => rank(a) - rank(b)).map((p) => `<div class="shopper-room__row">
-        <span class="shopper-room__rowtype">${esc((typeInfo(p.type) || [, 'Piece'])[1])}</span>
+      <div class="shopper-room__listhead">Your room so far</div>
+      ${S.chosen.map((p) => `<div class="shopper-room__row">
         <a class="shopper-room__rowname" href="${esc(p.url || '#')}">${esc(p.title)}</a>
         <span class="shopper-room__rowprice">${money(p.price)}</span>
         <button type="button" class="shopper-room__remove" data-remove="${esc(p.sku)}">Remove</button></div>`).join('')}
@@ -372,7 +295,7 @@
     d.insertAdjacentHTML('afterend', `<div class="shopper__starters">${STARTERS.map((s) => `<button type="button" data-starter>${esc(s)}</button>`).join('')}</div>`);
   }
   function reset(k) {
-    S = { shopper: k, sid: null, email: null, profile: null, prefs: {}, picks: [], chosen: [], lastAsk: '', log: '', room: null, browsing: null };
+    S = { shopper: k, sid: null, email: null, profile: null, prefs: {}, picks: [], chosen: [], lastAsk: '', log: '' };
     log.innerHTML = '';
     strip.querySelectorAll('.is-hot').forEach((l) => l.classList.remove('is-hot'));
     ticker.textContent = 'idle · waiting for a shopper';
@@ -396,10 +319,7 @@
     const t = e.target.closest('button');
     if (!t) return;
     if (t.hasAttribute('data-restart')) { if (!busy) reset(S.shopper); return; }
-    if (t.hasAttribute('data-browse')) {
-      const [k, , plural] = typeInfo(t.dataset.browse);
-      ask(`Show me ${plural} for my ${roomKey() || 'room'}`, k);
-    } else if (t.hasAttribute('data-remove')) {
+    if (t.hasAttribute('data-remove')) {
       S.chosen = S.chosen.filter((p) => p.sku !== t.dataset.remove);
       render(); save();
     } else if (t.hasAttribute('data-pick')) {
