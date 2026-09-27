@@ -97,19 +97,26 @@
       </facet-filters-form>
     {%- endif -%}
 
+    {%- comment -%} Shopify returns no filters for collections over 5,000 products; hide the empty drawer. {%- endcomment -%}
+    {%- liquid
+      assign enable_filtering = section.settings.enable_filtering
+      if collection.filters == empty
+        assign enable_filtering = false
+      endif
+    -%}
     <div class="{% if section.settings.filter_type == 'vertical' %} facets-vertical page-width{% endif %}">
       {{ 'component-facets.css' | asset_url | stylesheet_tag }}
       <script src="{{ 'facets.js' | asset_url }}" defer="defer"></script>
-      {%- if section.settings.enable_filtering or section.settings.enable_sorting -%}
+      {%- if enable_filtering or section.settings.enable_sorting -%}
         <aside
           aria-labelledby="verticalTitle"
-          class="facets-wrapper{% unless section.settings.enable_filtering %} facets-wrapper--no-filters{% endunless %}{% if section.settings.filter_type != 'vertical' %} page-width{% endif %}"
+          class="facets-wrapper{% unless enable_filtering %} facets-wrapper--no-filters{% endunless %}{% if section.settings.filter_type != 'vertical' %} page-width{% endif %}"
           id="main-collection-filters"
           data-id="{{ section.id }}"
         >
           {% render 'facets',
             results: collection,
-            enable_filtering: section.settings.enable_filtering,
+            enable_filtering: enable_filtering,
             enable_sorting: section.settings.enable_sorting,
             filter_type: section.settings.filter_type,
             paginate: paginate
