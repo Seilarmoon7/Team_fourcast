@@ -6,11 +6,11 @@
   --sh-mono: 'Space Mono', ui-monospace, Menlo, monospace;
 }
 
-/* ---------- layout: header on top, chat | page below, strip pinned ---------- */
+/* ---------- layout: header on top, page | chat below, strip pinned ---------- */
 @media screen and (min-width: 750px) {
   body.shopper-body { display: flex; flex-direction: column; height: 100dvh; overflow: hidden; }
-  .shopper-layout { flex: 1; min-height: 0; display: grid; grid-template-columns: var(--sh-col) minmax(0, 1fr); margin-bottom: var(--sh-strip); }
-  .shopper-layout > .shopify-section { min-height: 0; display: flex; }
+  .shopper-layout { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) var(--sh-col); margin-bottom: var(--sh-strip); }
+  .shopper-layout > .shopify-section { order: 1; min-height: 0; display: flex; }
   .shopper-layout__page { min-width: 0; overflow-y: auto; }
 }
 @media screen and (max-width: 749px) {
@@ -19,7 +19,7 @@
 }
 
 /* ---------- chat column ---------- */
-.shopper { flex: 1; display: flex; flex-direction: column; min-height: 0; min-width: 0; background: var(--sh-cream); border-right: 1px solid var(--sh-line); font-family: var(--font-body-family); }
+.shopper { flex: 1; display: flex; flex-direction: column; min-height: 0; min-width: 0; background: var(--sh-cream); border-left: 1px solid var(--sh-line); font-family: var(--font-body-family); }
 .shopper__head { padding: 1.6rem 2.2rem 1.4rem; border-bottom: 1px solid var(--sh-line); }
 .shopper__title { font-family: var(--font-heading-family); font-weight: 600; font-size: 2.3rem; line-height: 1.1; color: var(--sh-ink); margin: 0; }
 .shopper__sub { font-size: 1.25rem; color: var(--sh-muted); margin: .3rem 0 0; line-height: 1.4; }
