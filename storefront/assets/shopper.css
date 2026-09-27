@@ -126,7 +126,9 @@ main.shopper-has-room > .shopify-section { display: none; }
 .shopper-room__price { font-size: 1.5rem; margin-top: .4rem; }
 .shopper-room__why { color: #d9b56b; font-size: 1.3rem; margin-top: .6rem; line-height: 1.45; }
 .shopper-room__after { padding: 2.8rem 5rem 1rem; }
-.shopper-room__after h3 { font-family: var(--font-heading-family); font-weight: 500; font-size: 3rem; margin: 0 0 1.4rem; }
+.shopper-room__after h3 { font-family: var(--font-heading-family); font-weight: 500; font-size: 3rem; margin: 0 0 .4rem; }
+.shopper-room__afternote { margin: 0 0 1.4rem; font-size: 1.4rem; opacity: .7; }
+.shopper-room__day span { display: block; margin-top: .3rem; opacity: .6; }
 .shopper-room__mail { border-top: 1px solid var(--sh-ink); padding: 1.3rem 0; display: grid; grid-template-columns: 7rem 1fr; gap: 1rem; animation: sh-rise .35s ease both; }
 .shopper-room__day { font-size: 1.1rem; letter-spacing: .16rem; text-transform: uppercase; color: var(--sh-muted); padding-top: .6rem; }
 .shopper-room__subject { font-family: var(--font-heading-family); font-size: 2.2rem; }

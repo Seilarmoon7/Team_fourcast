@@ -203,7 +203,7 @@
       await wait(650);
       lamp('bloomreach', true); tick('bloomreach', 'nurture', m.subject);
       const preview = m.preview.replace('{order}', order).replace('{item}', items[0] ? items[0].title : 'order');
-      box.insertAdjacentHTML('beforeend', `<div class="shopper-room__mail"><div class="shopper-room__day">${m.day}</div><div><div class="shopper-room__subject">${esc(m.subject)}</div><div class="shopper-room__preview">${esc(preview)}</div></div></div>`);
+      box.insertAdjacentHTML('beforeend', `<div class="shopper-room__mail"><div class="shopper-room__day">${m.day}<span>Email</span></div><div><div class="shopper-room__subject">${esc(m.subject)}</div><div class="shopper-room__preview">${esc(preview)}</div></div></div>`);
       await wait(220); lamp('bloomreach', false);
     }
     ticker.textContent = 'idle · journey complete';
@@ -288,7 +288,9 @@
   function roomPaid(order) {
     if (!ON_HOME) return document.createElement('div');
     const a = room.querySelector('[data-after]');
-    a.innerHTML = `<div class="shopper-room__after"><h3>Order ${esc(order)}, what happens next</h3><div data-mails></div></div>`;
+    a.innerHTML = `<div class="shopper-room__after"><h3>Order ${esc(order)}: what we'll email you</h3>
+      <p class="shopper-room__afternote">Bloomreach sends these once Shopify confirms payment.</p><div data-mails></div></div>`;
+    page.scrollTo({ top: page.scrollTop + a.getBoundingClientRect().top - page.getBoundingClientRect().top, behavior: 'smooth' });
     return a.querySelector('[data-mails]');
   }
 
