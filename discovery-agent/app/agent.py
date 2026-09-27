@@ -24,6 +24,7 @@ BY_SKU = {c["item_id"]: c for c in CATALOG}
 PERSONAS: dict[str, dict] = {k: v for k, v in json.loads((Path(__file__).parent / "personas.json").read_text()).items()
                              if not k.startswith("_")}
 HIGH_VALUE_LTV = 8000.0   # value-tier cutoff on predicted LTV
+SHOPIFY_LOOKUP_BATCH = 10   # Shopify's UCP lookup_catalog hard-caps /catalog/ids at 10 entries per call
 
 
 def value_tier(p: dict) -> dict:
@@ -164,20 +165,27 @@ class Toolbox:
 
     def _live(self, items: list[dict], limit: int) -> list[dict]:
         """Attach live Shopify price/stock; keep only purchasable items."""
-        ids = [c["variant_id"] for c in items[: limit * 3]]
+        candidates = items[: limit * 3]
+        ids = [c["variant_id"] for c in candidates]
         self.shopify_down = False   # reflects this lookup only, not an earlier one this turn
-        live = None
-        for attempt in (1, 2):
-            try:
-                live = self.shop.lookup_variants(ids)
-                break
-            except Exception as e:
-                log.warning("shopify_lookup_failed attempt=%s %s", attempt, e)
-        if live is None:
-            self.shopify_down = True
-            return []
+        # Shopify's lookup_catalog rejects more than 10 ids per call, so batch instead of
+        # sending the full overfetch (limit*3, up to 18) in one shot.
+        live: dict[str, dict] = {}
+        for i in range(0, len(ids), SHOPIFY_LOOKUP_BATCH):
+            chunk = ids[i: i + SHOPIFY_LOOKUP_BATCH]
+            chunk_live = None
+            for attempt in (1, 2):
+                try:
+                    chunk_live = self.shop.lookup_variants(chunk)
+                    break
+                except Exception as e:
+                    log.warning("shopify_lookup_failed attempt=%s %s", attempt, e)
+            if chunk_live is None:
+                self.shopify_down = True
+                return []
+            live.update(chunk_live)
         out = []
-        for c in items:
+        for c in candidates:
             lv = live.get(c["variant_id"])
             if not lv or not lv["available"]:
                 continue

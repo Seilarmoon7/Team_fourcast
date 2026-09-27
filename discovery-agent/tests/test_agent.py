@@ -167,6 +167,30 @@ def test_shopify_down_returns_no_products_not_crash(mocks):
     assert out["products"] == []
 
 
+def test_find_products_batches_shopify_lookups_under_10_ids(mocks):
+    """Shopify's real lookup_catalog rejects >10 ids/call; find_products must never send that many."""
+    calls = []
+
+    def capped(request):
+        body = json.loads(request.content)
+        ids = body["params"]["arguments"]["catalog"].get("ids", [])
+        calls.append(len(ids))
+        if len(ids) > 10:
+            return httpx.Response(200, json={"jsonrpc": "2.0", "id": body["id"], "result": {
+                "isError": True, "content": [{"type": "text",
+                "text": "Invalid arguments: array size at `/catalog/ids` is greater than: 10"}]}})
+        return ucp_response(request)
+
+    mocks["router"].post(UCP).mock(side_effect=capped)
+    agent = make([])
+    t = Toolbox(Journey(email="a@b.co"), agent.shop, agent.br, agent.features, agent.s)
+    out = t.find_products(room="living room", limit=6)   # limit*3=18 candidates -> must batch into >=2 calls
+    assert not out.get("error")
+    assert len(out["products"]) == 6
+    assert all(n <= 10 for n in calls)
+    assert len(calls) >= 2
+
+
 def test_http_endpoint(monkeypatch, mocks):
     from fastapi.testclient import TestClient
     from app import main
