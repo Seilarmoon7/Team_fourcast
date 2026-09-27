@@ -57,7 +57,9 @@
   const md = (s) => String(s ?? '').trim().replace(/^[ \t]*[*-][ \t]+/gm, '• ').split(/\n{2,}/)
     .filter((p) => p.trim()).map((p) => '<p>' + inlineMd(p).replace(/\n/g, '<br>') + '</p>').join('');
   // The checkout button carries the checkout link, so drop the copy the agent writes into its reply.
-  const withoutCartLinks = (s) => String(s ?? '').replace(/\[[^\]]*\]\((https?:\/\/[^\s)]*\/cart\/[^\s)]*)\)|https?:\/\/\S*\/cart\/\S*/g, '');
+  // A lead-in like "complete your purchase here:" is repointed at the button instead of left dangling.
+  const withoutCartLinks = (s) => String(s ?? '').replace(/(\s+here)?(:)?\s*(?:\[[^\]]*\]\((https?:\/\/[^\s)]*\/cart\/[^\s)]*)\)|https?:\/\/\S*\/cart\/\S*)/gi,
+    (m, here, colon) => (here || colon ? ' below.' : ''));
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const money = (n) => '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: Number(n) % 1 ? 2 : 0, maximumFractionDigits: 2 });
   const toBottom = (el) => { el.scrollTop = el.scrollHeight; requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; }); };
