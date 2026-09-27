@@ -229,8 +229,8 @@
     room.hidden = false;
     room.innerHTML = `<div class="shopper-room__intro"><div class="shopper-room__top"><div class="shopper-room__eyebrow">Built for ${esc(firstName())}</div>
       <button type="button" class="shopper-room__restart" data-restart>Start over</button></div>
-      <h2 class="shopper-room__title"></h2><p class="shopper-room__sub"></p><p class="shopper-room__empty" hidden>Talk with our personal shopper to start. Pieces picked for you show up here.</p><div data-offer></div><div data-list></div></div>
-      <div data-band></div><div data-after></div>`;
+      <h2 class="shopper-room__title"></h2><p class="shopper-room__sub"></p><p class="shopper-room__empty" hidden>Talk with our personal shopper to start. Pieces picked for you show up here.</p><div data-offer></div></div>
+      <div data-band></div><div class="shopper-room__listwrap" data-list></div><div data-after></div>`;
     page.scrollTop = 0;
   }
   function roomUpdate() {
@@ -263,17 +263,16 @@
       band.innerHTML = `<div class="shopper-room__band${animate ? ' is-new' : ''}"><div class="shopper-room__bandhead">
         <h3>Picked for you</h3><span>${n} piece${n > 1 ? 's' : ''}</span></div><div class="shopper-room__grid"></div></div>`;
       const grid = band.querySelector('.shopper-room__grid');
-      for (const p of S.picks) {
+      S.picks.forEach((p, i) => {
         const on = S.chosen.some((c) => c.sku === p.sku);
         const bg = p.image ? `background-image:url('${encodeURI(p.image)}')` : 'background:#8a7a66';
-        grid.insertAdjacentHTML('beforeend', `<div class="shopper-room__card${on ? ' is-chosen' : ''}${animate ? ' is-new' : ''}" data-sku="${esc(p.sku)}">
+        grid.insertAdjacentHTML('beforeend', `<div class="shopper-room__card${on ? ' is-chosen' : ''}${animate ? ' is-new' : ''}" data-sku="${esc(p.sku)}"${animate ? ` style="animation-delay:${i * 170}ms"` : ''}>
           <a href="${esc(p.url || '#')}"><div class="shopper-room__img" style="${bg}">${p.image ? '' : esc([p.material, p.color].filter(Boolean).join(' · '))}</div></a>
           <div class="shopper-room__name">${esc(p.title)}</div><div class="shopper-room__price">${money(p.price)}</div>
           <div class="shopper-room__why">${esc([p.style, p.material].filter(Boolean).join(' · '))}</div>
-          ${on ? '<div class="shopper-room__tag">✓ In your room</div>' : ''}
+          <div class="shopper-room__tag${on ? '' : ' is-off'}">✓ In your room</div>
           <button type="button" class="shopper-room__pick" data-pick>${on ? 'Remove' : 'Add to your room'}</button></div>`);
-        if (animate) await wait(170);
-      }
+      });
     }
 
     // Everything chosen so far: what the shopper will check out.

@@ -111,6 +111,7 @@ main.shopper-has-room > .shopify-section { display: none; }
 .shopper-room__card.is-chosen .shopper-room__pick { color: #d8d2c6; border-color: #4a463f; font-weight: 500; }
 .shopper-room__bandhead span { font-size: 1.4rem; color: #d8d2c6; }
 .shopper-room__listhead { font: 600 1.1rem var(--sh-mono); letter-spacing: .16rem; text-transform: uppercase; color: var(--sh-ink); opacity: .7; }
+.shopper-room__listwrap { padding: 0 5rem; }
 .shopper-room__list { margin-top: 2.6rem; max-width: 72rem; }
 .shopper-room__row { display: grid; grid-template-columns: 1fr auto auto; align-items: baseline; gap: 1.6rem; padding: 1rem 0; border-bottom: 1px solid #e0d7c8; font-size: 1.45rem; }
 .shopper-room__listhead + .shopper-room__row { margin-top: .8rem; border-top: 1px solid #e0d7c8; }
@@ -134,3 +135,4 @@ main.shopper-has-room > .shopify-section { display: none; }
 .shopper-room__day { font-size: 1.1rem; letter-spacing: .16rem; text-transform: uppercase; color: var(--sh-muted); padding-top: .6rem; }
 .shopper-room__subject { font-family: var(--font-heading-family); font-size: 2.2rem; }
 .shopper-room__preview { font-size: 1.35rem; color: var(--sh-body); margin-top: .2rem; }
+.shopper-room__tag.is-off { visibility: hidden; }
