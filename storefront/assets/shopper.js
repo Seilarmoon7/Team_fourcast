@@ -95,8 +95,13 @@
     } catch (e) {}
     return {};
   }
+  // Tool arguments in words: checkout items by product name, lists joined, no raw JSON.
+  const nameOf = (sku) => ([...S.chosen, ...S.picks].find((p) => p.sku === sku) || {}).title || sku;
+  const argVal = (v) => Array.isArray(v)
+    ? v.map((x) => (x && x.sku ? nameOf(x.sku) + (x.quantity > 1 ? ` ×${x.quantity}` : '') : typeof x === 'object' ? argVal(x) : x)).join(', ')
+    : v && typeof v === 'object' ? Object.entries(v).map(([k, x]) => `${k} ${x}`).join(', ') : v;
   const argText = (args) => Object.entries(args || {}).filter(([k]) => k !== 'email')
-    .map(([k, v]) => `${k.replace(/_/g, ' ')} ${typeof v === 'object' ? JSON.stringify(v) : v}`).join(' · ');
+    .map(([k, v]) => `${k.replace(/_/g, ' ')} ${argVal(v)}`).join(' · ');
 
   async function playTools(tools) {
     for (const t of tools) {

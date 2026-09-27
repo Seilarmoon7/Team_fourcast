@@ -53,11 +53,11 @@
 .shopper__receipt.is-open .shopper__chip b { transform: rotate(90deg); }
 .shopper__rbody { display: none; margin-top: .7rem; background: var(--sh-rail); color: #e9e4da; border-radius: 1rem; padding: 1rem 1.2rem; }
 .shopper__receipt.is-open .shopper__rbody { display: block; }
-.shopper__rrow { display: grid; grid-template-columns: 8rem 1fr auto; gap: .8rem; padding: .5rem 0; border-bottom: 1px solid var(--sh-rail-line); font-size: 1.15rem; align-items: baseline; }
+.shopper__rrow { display: grid; grid-template-columns: 8rem minmax(0, 1fr) auto; gap: .8rem; padding: .5rem 0; border-bottom: 1px solid var(--sh-rail-line); font-size: 1.15rem; align-items: baseline; }
 .shopper__rrow:last-of-type { border-bottom: 0; }
 .shopper__rp { font: .95rem var(--sh-mono); letter-spacing: .1rem; text-transform: uppercase; color: var(--sh-sage); }
 .shopper__rc { font: 1rem var(--sh-mono); color: var(--sh-rail-muted); display: block; }
-.shopper__rv { color: #fff; line-height: 1.4; }
+.shopper__rv { color: #fff; line-height: 1.4; overflow-wrap: anywhere; }
 .shopper__rms { font: .95rem var(--sh-mono); color: var(--sh-rail-muted); }
 .shopper__rnote { font-size: 1.1rem; color: #e0b063; margin-top: .8rem; line-height: 1.45; }
 
