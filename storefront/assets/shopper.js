@@ -283,7 +283,7 @@
         <span class="shopper-room__rowprice">${money(p.price)}</span>
         <button type="button" class="shopper-room__remove" data-remove="${esc(p.sku)}">Remove</button></div>`).join('')}
       <div class="shopper-room__listfoot"><span>${c} piece${c > 1 ? 's' : ''}</span><b>${money(total)}</b>
-        <button type="button" class="shopper-room__buy" data-buy>Check out your room →</button></div></div>` : '';
+        <button type="button" class="shopper-room__buy" data-buy>Buy your room →</button></div></div>` : '';
   }
   function roomPaid(order) {
     if (!ON_HOME) return document.createElement('div');
