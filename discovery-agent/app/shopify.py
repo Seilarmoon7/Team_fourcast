@@ -95,11 +95,15 @@ class ShopifyStorefront:
         abandoned an earlier checkout would carry those items into this one. /cart/clear?return_to=
         empties the cart first, then builds the permalink cart, so the checkout contains only what
         the agent was asked to buy.
+
+        `email` is accepted but not embedded in the URL: `checkout[email]=` is a checkout-step
+        parameter, not valid on a /cart/{variant}:{qty} cart-add permalink, and mixing it in here
+        broke the whole query string (including `discount=`, which is valid on its own on a cart
+        permalink - confirmed directly against the live store). The shopper enters their email at
+        Shopify's real checkout step instead; the agent still has it for its own tracking.
         """
         path = ",".join(f"{vid}:{max(1, int(q))}" for vid, q in lines)
         params = []
-        if email:
-            params.append(f"checkout[email]={quote(email)}")
         if discount:
             params.append(f"discount={quote(discount)}")
         for k, v in (attributes or {}).items():

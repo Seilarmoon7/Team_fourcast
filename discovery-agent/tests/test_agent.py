@@ -115,7 +115,7 @@ def test_full_journey_discovery_to_checkout(mocks):
     assert u.path == "/cart/clear"                                   # empties any stale cart first
     cart = unquote(parse_qs(u.query)["return_to"][0])
     assert cart.startswith("/cart/51799216422948:1?")
-    assert "checkout[email]=shopper@example.com" in cart
+    assert "checkout[email]=" not in cart      # not valid on a /cart/... permalink, breaks the discount too
     assert "attributes[t6_session]=" + j.session_id in cart
     assert "discount=" not in cart                          # no churn signal -> no discount
     types_ = tracked_types(mocks["track"])
