@@ -47,6 +47,7 @@
   const $ = (sel, el = root) => el.querySelector(sel);
   const log = $('[data-log]'), input = $('[data-input]'), send = $('[data-send]'), form = $('[data-form]');
   const strip = document.querySelector('[data-strip]'), ticker = strip.querySelector('[data-ticker]');
+  const bts = document.querySelector('[data-bts-panel]'), btsBtn = strip.querySelector('[data-bts]');
   const room = document.getElementById('ShopperRoom');
   const page = document.querySelector('.shopper-layout__page') || document.scrollingElement;
 
@@ -70,14 +71,24 @@
   };
 
   // Conversation state survives page navigation within the tab.
-  let S = store.get('state') || { shopper: 'guest', sid: null, email: null, profile: null, prefs: {}, picks: [], chosen: [], lastAsk: '', log: '' };
+  const fresh = (k) => ({ shopper: k, sid: null, email: null, profile: null, prefs: {}, picks: [], chosen: [], lastAsk: '', log: '', tools: [], stage: null, checkout: false, sent: 0 });
+  let S = { ...fresh('guest'), ...store.get('state') };
   S.chosen = (S.chosen || []).filter((p) => p && p.sku);   // older saves kept SKUs only
   let busy = false;
   const save = () => { S.log = log.innerHTML; store.set('state', S); };
 
   /* ---------- chat ---------- */
-  function lamp(p, on) { strip.querySelector(`[data-p="${p}"]`)?.classList.toggle('is-hot', on); }
-  function tick(p, call, result) { ticker.innerHTML = `<b>${esc(PN[p] || p)}</b> · ${esc(call)}${result ? ` → <em>${esc(result)}</em>` : ''}`; }
+  function lamp(p, on) {
+    strip.querySelector(`[data-p="${p}"]`)?.classList.toggle('is-hot', on);
+    const b = bts.querySelector(`[data-p="${p}"]`);
+    b?.classList.toggle('is-hot', on);
+    if (on) b?.classList.add('is-seen');
+  }
+  function tick(p, call, result) {
+    ticker.innerHTML = `<b>${esc(PN[p] || p)}</b> · ${esc(call)}${result ? ` → <em>${esc(result)}</em>` : ''}`;
+    const w = bts.querySelector(`[data-p="${p}"] em`);
+    if (w) w.textContent = result ? `${call} → ${result}` : call;
+  }
   function addMsg(who, html) {
     const d = document.createElement('div');
     d.className = `shopper__msg shopper__msg--${who}`;
@@ -164,6 +175,11 @@
         else if (t.args && t.args.room && !S.prefs.room) S.prefs.room = t.args.room;
       });
 
+      const g = bts.querySelector('[data-p="google"] em');
+      if (g) g.textContent = `replied · ${tools.length} tool call${tools.length === 1 ? '' : 's'}`;
+      S.tools = tools; S.stage = d.stage || S.stage;
+      if (d.checkout_url) S.checkout = true;
+      renderBts();
       await playTools(tools);
       typing.innerHTML = `<div class="shopper__bub">${md((d.checkout_url ? withoutCartLinks(d.reply) : d.reply) || '…')}</div>`;
       if (tools.length) addReceipt(tools, firstProfile ? offerNote(d.profile) : '');
@@ -196,6 +212,7 @@
   async function simulatePaid(btn) {
     if (busy) return;
     busy = true; btn.disabled = true; btn.textContent = 'Paid ✓';
+    S.stage = 'purchased'; S.sent = 0; renderBts();
     const items = JSON.parse(btn.dataset.items || '[]');
     const order = '#' + (1000 + Math.floor(Math.random() * 900));
     lamp('shopify', true); lamp('bloomreach', true); tick('shopify', 'order paid', `${order} · webhook → Bloomreach`);
@@ -205,12 +222,64 @@
     for (const m of MAILS) {
       await wait(650);
       lamp('bloomreach', true); tick('bloomreach', 'nurture', m.subject);
+      S.sent += 1; renderBts();
       const preview = m.preview.replace('{order}', order).replace('{item}', items[0] ? items[0].title : 'order');
       box.insertAdjacentHTML('beforeend', `<div class="shopper-room__mail"><div class="shopper-room__day">${m.day}<span>Email</span></div><div><div class="shopper-room__subject">${esc(m.subject)}</div><div class="shopper-room__preview">${esc(preview)}</div></div></div>`);
       await wait(220); lamp('bloomreach', false);
     }
     ticker.textContent = 'idle · journey complete';
     busy = false; save();
+  }
+
+  /* ---------- behind the scenes ---------- */
+  // What the agent knows and did, drawn from the same responses the chat uses.
+  const STAGES = [['discovery', 'Discover'], ['recommending', 'Recommend'], ['checkout', 'Checkout'], ['purchased', 'Nurture']];
+  const kv = (k, v, dim) => `<div class="shopper-bts__kv"><span>${esc(k)}</span><b${dim ? ' class="is-dim"' : ''}>${esc(v)}</b></div>`;
+  const callout = (kind, label, value, why) => `<div class="shopper-bts__box shopper-bts__box--${kind}"><span>${esc(label)}</span><b>${esc(value)}</b>${why ? `<p>${esc(why)}</p>` : ''}</div>`;
+  function profileHtml() {
+    const p = S.profile;
+    let h = '';
+    if (!p) {
+      h = S.shopper === 'guest'
+        ? callout('mid', 'Value tier', 'Guest', 'No profile. Pick a customer under View as to see the agent use their Databricks profile.')
+        : callout('mid', 'Value tier', SHOPPERS[S.shopper], 'Their Databricks profile loads on the first message.');
+    } else {
+      const ltv = p.predicted_ltv != null ? Number(p.predicted_ltv) : null;
+      if (ltv != null) {
+        const high = (p.value_tier || (ltv >= 8000 ? 'high' : 'mid')) === 'high';
+        h += callout(high ? 'high' : 'mid', 'Value tier', high ? 'High value' : 'Mid value', p.guidance);
+      }
+      if (p.churn_risk != null) {
+        const o = p.retention_offer;
+        h += callout(o ? 'offer' : 'mid', 'Retention offer', o ? `Eligible · ${o.code}` : 'Not eligible', offerNote(p));
+      }
+      h += [['Customer', [p.first_name || (p.known_customer ? 'Known customer' : 'New visitor'), p.loyalty_tier].filter(Boolean).join(' · ')],
+        ['Predicted LTV', ltv != null ? money(ltv) : null], ['Avg order', p.avg_order_value != null ? money(p.avg_order_value) : null],
+        ['Churn risk', p.churn_risk != null ? Number(p.churn_risk).toFixed(3) : null], ['Segment', p.segment, true],
+        ['Source', (p.source || []).join(' + '), true]].filter(([, v]) => v).map(([k, v, dim]) => kv(k, v, dim)).join('');
+    }
+    h += kv('Email', S.email || ACCOUNT_EMAIL || 'not given', true);
+    if (S.sid) h += kv('Session', S.sid.slice(0, 8) + '…', true);
+    return h + Object.entries(S.prefs).filter(([k, v]) => v !== '' && v != null && k !== 'email')
+      .map(([k, v]) => kv(k.replace(/_/g, ' '), Array.isArray(v) ? v.join(', ') : v)).join('');
+  }
+  function renderBts() {
+    bts.querySelector('[data-bts-profile]').innerHTML = profileHtml();
+    bts.querySelector('[data-bts-trace]').innerHTML = S.tools.length
+      ? S.tools.map((t) => `<div${t.ok ? '' : ' class="is-bad"'}><b>${esc(t.tool)}${t.ok ? '' : ' · failed'}</b><em>${esc(argText(t.args) || 'no arguments')}${t.n != null ? ` → ${esc(t.n)}` : ''}</em></div>`).join('')
+      : `<p class="shopper-bts__empty">${S.sid ? 'No tools called this turn.' : 'Nothing yet.'}</p>`;
+    const idx = STAGES.findIndex(([k]) => k === S.stage);
+    let j = `<div class="shopper-bts__stages">${STAGES.map(([, label], i) => `<span class="${i === idx ? 'is-now' : i < idx ? 'is-on' : ''}">${label}</span>`).join('')}</div>`;
+    if (S.checkout || S.stage === 'purchased') {
+      j += '<div class="shopper-bts__split">Bloomreach · 90% journey arm · 10% holdout</div>'
+        + MAILS.map((m, i) => `<div class="shopper-bts__mail${i < S.sent ? ' is-on' : ''}"><span>${i + 1}</span><b>${esc(m.subject)}</b><em>${i < S.sent ? 'sent' : m.day}</em></div>`).join('');
+    } else j += '<p class="shopper-bts__empty">Starts in Bloomreach when Shopify reports the order paid.</p>';
+    bts.querySelector('[data-bts-journey]').innerHTML = j;
+  }
+  function openBts(on) {
+    bts.classList.toggle('is-open', on);
+    bts.inert = !on;
+    btsBtn.setAttribute('aria-expanded', on);
   }
 
   /* ---------- room ---------- */
@@ -318,9 +387,11 @@
     d.insertAdjacentHTML('afterend', `<div class="shopper__starters">${STARTERS.map((s) => `<button type="button" data-starter>${esc(s)}</button>`).join('')}</div>`);
   }
   function reset(k) {
-    S = { shopper: k, sid: null, email: null, profile: null, prefs: {}, picks: [], chosen: [], lastAsk: '', log: '' };
+    S = fresh(k);
     log.innerHTML = '';
-    strip.querySelectorAll('.is-hot').forEach((l) => l.classList.remove('is-hot'));
+    [strip, bts].forEach((el) => el.querySelectorAll('.is-hot, .is-seen').forEach((l) => l.classList.remove('is-hot', 'is-seen')));
+    bts.querySelectorAll('[data-p] em').forEach((w) => { w.textContent = 'idle'; });
+    renderBts();
     ticker.textContent = 'idle · waiting for a shopper';
     room.innerHTML = '';
     if (inRoom()) render();
@@ -384,11 +455,17 @@
     e.preventDefault();
     if (inRoom()) { history.pushState(null, '', '/'); showView(); }
   });
+  // The drawer covers the page column; clicks there close it, while the chat and strip stay usable.
+  btsBtn.addEventListener('click', () => openBts(!bts.classList.contains('is-open')));
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && bts.classList.contains('is-open')) openBts(false); });
+  document.addEventListener('click', (e) => {
+    if (bts.classList.contains('is-open') && !bts.contains(e.target) && !strip.contains(e.target) && !root.contains(e.target)) openBts(false);
+  });
   window.addEventListener('popstate', showView);
   window.addEventListener('hashchange', showView);
 
   if (S.log) {
-    log.innerHTML = S.log; toBottom(log); markShopper();
+    log.innerHTML = S.log; toBottom(log); markShopper(); renderBts();
   } else reset(S.shopper);
   showView();
 })();
