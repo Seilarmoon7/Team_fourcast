@@ -70,7 +70,10 @@ How to work:
   create_checkout with exactly the items they want in THIS purchase: the ones named in their latest
   message. Never carry over items from an earlier checkout unless they ask for them again. Every
   checkout request needs a fresh create_checkout call; never reuse an old link. If unclear which
-  items they mean, ask before creating the link.
+  items they mean, ask before creating the link. Never write a checkout link yourself: only ever
+  paste the exact URL create_checkout just returned, in the same turn you called it. If you haven't
+  called create_checkout this turn, say you're setting it up and call the tool - don't describe or
+  guess at a link.
 - Keep replies short (under 120 words), warm and specific. No markdown tables."""
 
 
@@ -422,6 +425,7 @@ class DiscoveryAgent:
                 log.exception("final_answer_failed")
         if not reply:
             reply = "Sorry, I lost my train of thought there. Could you say that again?"
+        reply = _strip_fake_links(reply, tools.new_checkout_url)
         journey.history = [c.model_dump(mode="json", exclude_none=True) for c in contents]
         # cards = products shown this turn + any earlier pick the reply mentions by name
         cards = list(tools.ui_products)
@@ -435,6 +439,26 @@ class DiscoveryAgent:
         cards = mentioned or cards
         return {"reply": reply, "products": _dedupe(cards), "checkout_url": tools.new_checkout_url, "stage": journey.stage, "email": journey.email,
                 "profile": tools.ui_profile() if self.s.expose_profile else None, "trace": trace}
+
+
+_MD_LINK_RE = re.compile(r"\[([^\]]*)\]\((https?://[^)\s]+)\)")
+_BARE_URL_RE = re.compile(r"https?://[^\s)]+")
+
+
+def _strip_fake_links(reply: str, real_checkout_url: str | None) -> str:
+    """The model can only ever legitimately show a link if create_checkout returned one this
+    turn - same grounding guarantee as products, enforced here instead of trusted from the
+    prompt: any link (markdown or bare) that isn't exactly the real checkout_url gets stripped
+    down to its link text, so a fabricated URL never reaches the customer."""
+    def _md(m: re.Match) -> str:
+        text, url = m.group(1), m.group(2)
+        return m.group(0) if url == real_checkout_url else text
+    reply = _MD_LINK_RE.sub(_md, reply)
+
+    def _bare(m: re.Match) -> str:
+        url = m.group(0)
+        return url if url == real_checkout_url else ""
+    return _BARE_URL_RE.sub(_bare, reply)
 
 
 def _dedupe(products: list[dict]) -> list[dict]:

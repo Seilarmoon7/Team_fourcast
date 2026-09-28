@@ -239,6 +239,18 @@ def test_new_checkout_only_contains_latest_items(mocks):
     assert cart.split("?")[0] == "/cart/51799269179428:1"            # only the rug, no earlier items
 
 
+def test_model_cannot_fabricate_a_checkout_link(mocks):
+    """A model turn that writes a link without actually calling create_checkout must never
+    reach the customer with that link intact - only a link matching a real checkout_url from
+    THIS turn survives."""
+    agent = make([[types.Part(text="Here you go: [Complete your purchase](https://example.com/fake-checkout) enjoy!")]])
+    j = Journey(email="a@b.co")
+    out = agent.turn(j, "checkout please")
+    assert out["checkout_url"] is None
+    assert "example.com" not in out["reply"] and "fake-checkout" not in out["reply"]
+    assert "Complete your purchase" in out["reply"]                # link text kept, URL stripped
+
+
 def _campaign_events(track):
     out = []
     for call in track.calls:
