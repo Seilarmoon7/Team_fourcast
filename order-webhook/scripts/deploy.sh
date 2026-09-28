@@ -79,3 +79,8 @@ echo
 echo "Deployed: $URL"
 echo "Shopify webhook URL (topics orders/paid, orders/updated, orders/cancelled):"
 echo "  $URL/webhooks/shopify/orders"
+echo
+echo "==> IMPORTANT: this script's --set-env-vars REPLACES the whole env list, so it just reset"
+echo "    this service's Databricks wiring (DATABRICKS_HOST/WAREHOUSE_ID/ORDERS_TABLE + token) if"
+echo "    it was on before this deploy. Restore it now - safe to re-run, it only merges:"
+echo "      cd .. && bash enable_databricks.sh"
