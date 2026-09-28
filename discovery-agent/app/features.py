@@ -8,6 +8,7 @@
 """
 from __future__ import annotations
 
+import concurrent.futures
 import logging
 
 import httpx
@@ -79,32 +80,43 @@ def map_customer_profile(row: dict) -> dict:
 class DatabricksFeatures:
     """SELECT one row from the Lakehouse feature table via the Databricks SQL Statement API."""
 
+    # wait_timeout bounds the SQL warehouse round trip; the http timeout is kept a couple
+    # seconds above it so the server's own CANCEL response wins over a client-side timeout.
+    WAIT_TIMEOUT_S = "4s"
+
     def __init__(self, host: str, token: str, warehouse_id: str, table: str, fallback: BloomreachFeatures,
                  transport: httpx.BaseTransport | None = None) -> None:
         self._url = f"https://{host.removeprefix('https://').rstrip('/')}/api/2.0/sql/statements"
-        self._http = httpx.Client(headers={"Authorization": f"Bearer {token}"}, timeout=10.0, transport=transport)
+        self._http = httpx.Client(headers={"Authorization": f"Bearer {token}"}, timeout=6.0, transport=transport)
         self._wh, self._table, self._fallback = warehouse_id, table, fallback
 
     def get(self, email: str | None) -> dict:
-        f = self._fallback.get(email)
         if not email:
-            return f
-        try:
-            r = self._http.post(self._url, json={
-                "warehouse_id": self._wh, "wait_timeout": "10s", "on_wait_timeout": "CANCEL",
-                "statement": f"SELECT {', '.join(DBX_COLUMNS)} FROM {self._table} WHERE email = :email LIMIT 1",
-                "parameters": [{"name": "email", "value": email.lower()}]})
-            body = r.json()
-            state = (body.get("status") or {}).get("state")
-            rows = (body.get("result") or {}).get("data_array") or []
-            if r.status_code != 200 or state not in (None, "SUCCEEDED"):
-                log.warning("databricks_features_failed status=%s state=%s err=%s", r.status_code, state,
-                            (body.get("status") or {}).get("error") or body.get("message"))
-            elif rows:
-                cols = [c["name"] for c in body["manifest"]["schema"]["columns"]]
-                f.update(map_customer_profile(dict(zip(cols, rows[0]))))
-                f["known_customer"] = True
-                f["source"].append("databricks")
-        except Exception as e:
-            log.warning("databricks_features_failed %s", e)
+            return self._fallback.get(email)
+        # Bloomreach and Databricks don't depend on each other - fetch them at the same time
+        # instead of paying both round trips back to back.
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as ex:
+            fallback_fut = ex.submit(self._fallback.get, email)
+            dbx_row = None
+            try:
+                r = self._http.post(self._url, json={
+                    "warehouse_id": self._wh, "wait_timeout": self.WAIT_TIMEOUT_S, "on_wait_timeout": "CANCEL",
+                    "statement": f"SELECT {', '.join(DBX_COLUMNS)} FROM {self._table} WHERE email = :email LIMIT 1",
+                    "parameters": [{"name": "email", "value": email.lower()}]})
+                body = r.json()
+                state = (body.get("status") or {}).get("state")
+                rows = (body.get("result") or {}).get("data_array") or []
+                if r.status_code != 200 or state not in (None, "SUCCEEDED"):
+                    log.warning("databricks_features_failed status=%s state=%s err=%s", r.status_code, state,
+                                (body.get("status") or {}).get("error") or body.get("message"))
+                elif rows:
+                    cols = [c["name"] for c in body["manifest"]["schema"]["columns"]]
+                    dbx_row = dict(zip(cols, rows[0]))
+            except Exception as e:
+                log.warning("databricks_features_failed %s", e)
+            f = fallback_fut.result()
+        if dbx_row is not None:
+            f.update(map_customer_profile(dbx_row))
+            f["known_customer"] = True
+            f["source"].append("databricks")
         return f

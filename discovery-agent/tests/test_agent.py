@@ -136,12 +136,11 @@ def test_checkout_requires_email(mocks):
 def test_discount_only_for_high_churn_risk(mocks):
     s = Settings(retention_discount_code="STAYCOZY10", churn_risk_threshold=0.6)
     agent = make([], s)
-    j = Journey(email="a@b.co")
     class F:  # feature provider stub standing in for Databricks
         def __init__(self, risk): self.risk = risk
         def get(self, email): return {"churn_risk": self.risk, "recommended_skus": []}
-    hi = Toolbox(j, agent.shop, agent.br, F(0.8), s).create_checkout([{"sku": "lr-001"}])
-    lo = Toolbox(j, agent.shop, agent.br, F(0.2), s).create_checkout([{"sku": "lr-001"}])
+    hi = Toolbox(Journey(email="a@b.co"), agent.shop, agent.br, F(0.8), s).create_checkout([{"sku": "lr-001"}])
+    lo = Toolbox(Journey(email="a@b.co"), agent.shop, agent.br, F(0.2), s).create_checkout([{"sku": "lr-001"}])
     assert hi["discount_code"] == "STAYCOZY10" and "discount%3DSTAYCOZY10" in hi["checkout_url"]
     assert lo["discount_code"] is None
 

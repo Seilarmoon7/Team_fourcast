@@ -21,6 +21,7 @@ class Journey:
     checkout_url: str | None = None
     campaign_requested: str | None = None     # goal handed to Bloomreach, one per journey
     persona: str | None = None                # demo shopper key (see app/personas.json)
+    profile_cache: dict | None = None         # Bloomreach/Databricks features.get() result, fetched once per journey
     history: list = field(default_factory=list)     # Gemini Content dicts (JSON-safe)
     created_at: float = field(default_factory=time.time)
     updated_at: float = field(default_factory=time.time)
