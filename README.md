@@ -50,6 +50,38 @@ For the full deep-dive — scale/concurrency analysis, retry and caching maps, f
 blast-radius diagrams, and the business-value math behind the discount logic — ask in the team
 channel for the current handbook link.
 
+## Design principles
+
+**The model can't invent a product.** Every product card the shopper sees is built from a real
+tool-call result — a live search against the catalog, cross-checked against Shopify for current
+price and stock — never from parsing what Gemini wrote. The reply text and the product cards are
+two independently-sourced outputs that happen to render together, so there's no path from "the
+model said it" to "the customer sees a price for it." What's shown is always what a tool actually
+returned.
+
+**Retention logic is a business rule, not a model judgment call.** Whether a shopper is offered a
+discount is decided in code from Databricks' churn signal, gated by a fixed threshold — the model
+reads the outcome and can mention it, but never decides it. The same conversation, run for two
+different customers, produces two different outcomes purely because of what the data says about
+each of them — not because the model was prompted differently.
+
+**A vague need becomes a coherent room, not a single lucky match.** When a shopper describes a
+feeling rather than an item — "my living room feels cold" — the agent reasons about what actually
+answers that (a rug, a lamp, a throw) and searches for each piece type on its own, then presents
+them as one considered set. The shopper keeps that set as a running collection they can add to and
+remove from across the rest of the conversation, and buy as one checkout when they're ready.
+
+**One agent hands off to another, it doesn't just fire an API call.** When a shopper stalls without
+buying, the discovery agent doesn't draft or send anything itself — it hands Bloomreach a goal
+("bring her back to finish the home office setup"), and Bloomreach's own campaign engine decides
+consent, timing and channel independently. Two systems, each deciding the part it's actually
+responsible for.
+
+**The loop closes on a real purchase, not a simulated one.** A paid Shopify order fires a webhook
+that writes the sale back into Databricks' customer record and triggers Bloomreach's post-purchase
+nurture — the same intelligence layer that shaped the original pitch gets updated by what the
+shopper actually did, so the next conversation starts from more accurate signal than the last one.
+
 ## Repository layout
 
 ```
