@@ -31,7 +31,7 @@ echo "==> Build & deploy"
 gcloud run deploy "$SERVICE" --source . --region "$REGION" --service-account "$SA" \
   --allow-unauthenticated --min-instances 1 --max-instances 5 --concurrency 20 \
   --cpu 1 --memory 1Gi --timeout 60 \
-  --set-env-vars "GOOGLE_CLOUD_PROJECT=$PROJECT_ID,GOOGLE_CLOUD_LOCATION=$GEMINI_LOCATION,GEMINI_MODEL=$GEMINI_MODEL,SHOP_DOMAIN=team-fourcast.myshopify.com,BLOOMREACH_PROJECT_TOKEN=1e8016b8-b5e4-11f1-8438-ea6153e4edbf,BLOOMREACH_BASE_URL=https://api-engagement.bloomreach.com,STATE_BACKEND=firestore,FEATURES_BACKEND=bloomreach" \
+  --set-env-vars "GOOGLE_CLOUD_PROJECT=$PROJECT_ID,GOOGLE_CLOUD_LOCATION=$GEMINI_LOCATION,GEMINI_MODEL=$GEMINI_MODEL,SHOP_DOMAIN=team-fourcast.myshopify.com,BLOOMREACH_PROJECT_TOKEN=1e8016b8-b5e4-11f1-8438-ea6153e4edbf,BLOOMREACH_BASE_URL=https://api-engagement.bloomreach.com,STATE_BACKEND=firestore,FEATURES_BACKEND=bloomreach,RETENTION_DISCOUNT_CODE=STAY15" \
   --set-secrets "BLOOMREACH_API_KEY_ID=t6-bloomreach-api-key-id:latest,BLOOMREACH_API_SECRET=t6-bloomreach-api-secret:latest"
 
 URL=$(gcloud run services describe "$SERVICE" --region "$REGION" --format='value(status.url)')
@@ -39,3 +39,8 @@ echo
 echo "Agent chat UI: $URL"
 echo "Smoke test:"
 echo "  curl -s -X POST $URL/api/chat -H 'Content-Type: application/json' -d '{\"message\":\"I need to redecorate my living room\"}'"
+echo
+echo "==> IMPORTANT: this script's --set-env-vars REPLACES the whole env list, so it just reset"
+echo "    FEATURES_BACKEND to bloomreach and dropped the Databricks wiring. If Databricks was on"
+echo "    before this deploy, restore it now (safe to re-run, it only merges):"
+echo "      cd .. && bash enable_databricks.sh"
