@@ -84,6 +84,67 @@
 .shopper-strip__ticker b { color: var(--sh-sage); font-weight: 400; }
 .shopper-strip__ticker em { font-style: normal; color: #fff; }
 
+.shopper-strip__bts { flex-shrink: 0; background: transparent; border: 1px solid var(--sh-rail-line); border-radius: 99px; padding: .4rem 1.2rem; font: 700 .95rem var(--sh-mono); letter-spacing: .15rem; text-transform: uppercase; color: var(--sh-rail-muted); cursor: pointer; }
+.shopper-strip__bts:hover, .shopper-strip__bts[aria-expanded="true"] { color: #fff; border-color: var(--sh-rail-muted); }
+.shopper-strip__bts b { display: inline-block; font-weight: 400; transition: transform .2s; }
+.shopper-strip__bts[aria-expanded="true"] b { transform: rotate(180deg); }
+
+/* ---------- behind the scenes: slides up from the strip over the page column ---------- */
+.shopper-bts { position: fixed; left: 0; right: 0; bottom: var(--sh-strip); height: 40vh; min-height: 28rem; z-index: 49; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); background: var(--sh-rail); color: #e9e4da; border-top: 1px solid var(--sh-rail-line); font-family: var(--font-body-family); transform: translateY(calc(100% + var(--sh-strip))); visibility: hidden; transition: transform .3s ease, visibility 0s .3s; }
+.shopper-bts.is-open { transform: none; visibility: visible; transition: transform .3s ease; }
+@media screen and (min-width: 750px) { .shopper-bts { right: var(--sh-col); } }
+@media screen and (max-width: 749px) {
+  .shopper-bts { grid-template-columns: 1fr; grid-auto-rows: max-content; height: 60vh; overflow-y: auto; }
+  .shopper-bts__sec { overflow: visible; border-right: 0; border-bottom: 1px solid var(--sh-rail-line); }
+  .shopper-strip__lamps { display: none; }
+}
+.shopper-bts__sec { min-width: 0; overflow-y: auto; padding: 1.8rem 2.2rem; border-right: 1px solid var(--sh-rail-line); }
+.shopper-bts__sec:last-child { border-right: 0; }
+.shopper-bts__sec h4 { margin: 0 0 1.3rem; font: 700 .95rem var(--sh-mono); letter-spacing: .22rem; text-transform: uppercase; color: var(--sh-rail-muted); }
+.shopper-bts__empty { margin: 0; font-size: 1.2rem; font-style: italic; line-height: 1.6; color: var(--sh-rail-muted); }
+
+.shopper-bts__lamp { display: grid; grid-template-columns: .8rem minmax(0, 1fr); column-gap: 1rem; align-items: center; padding: .6rem 0; }
+.shopper-bts__lamp span { width: .8rem; height: .8rem; border-radius: 50%; background: #3d3830; transition: all .3s; }
+.shopper-bts__lamp.is-seen span { background: #5b7f72; }
+.shopper-bts__lamp.is-hot span { background: var(--sh-sage); box-shadow: 0 0 0 4px rgba(143, 191, 169, .2); }
+.shopper-bts__lamp b { font-size: 1.25rem; font-weight: 600; color: var(--sh-rail-muted); }
+.shopper-bts__lamp.is-hot b, .shopper-bts__lamp.is-seen b { color: #fff; }
+.shopper-bts__lamp em { grid-column: 2; font: normal .95rem var(--sh-mono); color: var(--sh-rail-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.shopper-bts__lamp.is-hot em { color: var(--sh-sage); }
+
+.shopper-bts__box { border-radius: 1.1rem; padding: 1.1rem 1.4rem; margin-bottom: 1.1rem; border: 1px solid rgba(143, 135, 123, .28); background: rgba(143, 135, 123, .1); animation: sh-rise .35s ease both; }
+.shopper-bts__box span { display: block; font: 700 .9rem var(--sh-mono); letter-spacing: .2rem; text-transform: uppercase; color: var(--sh-rail-muted); }
+.shopper-bts__box b { display: block; margin-top: .3rem; font-size: 1.6rem; text-transform: uppercase; color: #b8b0a4; }
+.shopper-bts__box p { margin: .4rem 0 0; font-size: 1.1rem; line-height: 1.45; color: var(--sh-rail-muted); }
+.shopper-bts__box--high { border-color: rgba(143, 191, 169, .35); background: rgba(143, 191, 169, .13); }
+.shopper-bts__box--high b { color: var(--sh-sage); }
+.shopper-bts__box--offer { border-color: rgba(224, 176, 99, .35); background: rgba(183, 121, 31, .15); }
+.shopper-bts__box--offer b { color: #e0b063; }
+.shopper-bts__kv { display: flex; justify-content: space-between; align-items: baseline; gap: 1.2rem; padding: .6rem 0; border-bottom: 1px solid var(--sh-rail-line); }
+.shopper-bts__kv:last-child { border-bottom: 0; }
+.shopper-bts__kv span { flex-shrink: 0; font: .9rem var(--sh-mono); letter-spacing: .14rem; text-transform: uppercase; color: var(--sh-rail-muted); }
+.shopper-bts__kv b { font-size: 1.25rem; text-align: right; color: #fff; overflow-wrap: anywhere; }
+.shopper-bts__kv b.is-dim { font-weight: 400; color: var(--sh-rail-muted); }
+
+.shopper-bts__trace { font: 1rem/1.5 var(--sh-mono); }
+.shopper-bts__trace div { padding: .5rem 0; border-bottom: 1px dashed var(--sh-rail-line); }
+.shopper-bts__trace div:last-child { border-bottom: 0; }
+.shopper-bts__trace b { display: block; color: #fff; }
+.shopper-bts__trace em { font-style: normal; color: var(--sh-rail-muted); overflow-wrap: anywhere; }
+.shopper-bts__trace .is-bad b { color: #e39b85; }
+
+.shopper-bts__stages { display: flex; gap: .4rem; margin-bottom: 1.2rem; }
+.shopper-bts__stages span { flex: 1; padding: .6rem .2rem; border-radius: .6rem; background: #2c2823; font: .85rem var(--sh-mono); letter-spacing: .08rem; text-transform: uppercase; text-align: center; color: var(--sh-rail-muted); transition: all .3s; }
+.shopper-bts__stages .is-on { background: rgba(143, 191, 169, .18); color: var(--sh-sage); }
+.shopper-bts__stages .is-now { background: var(--sh-sage); color: var(--sh-rail); font-weight: 700; }
+.shopper-bts__split { margin-bottom: 1rem; padding: .8rem 1.1rem; border-radius: .7rem; background: rgba(143, 191, 169, .1); font: .95rem/1.5 var(--sh-mono); letter-spacing: .1rem; color: var(--sh-sage); }
+.shopper-bts__mail { display: flex; gap: 1rem; align-items: center; padding: .6rem 0; font-size: 1.2rem; opacity: .6; transition: opacity .45s; }
+.shopper-bts__mail.is-on { opacity: 1; }
+.shopper-bts__mail span { width: 1.2rem; flex-shrink: 0; font: .9rem var(--sh-mono); color: var(--sh-rail-muted); }
+.shopper-bts__mail b { flex: 1; font-weight: 400; line-height: 1.35; }
+.shopper-bts__mail em { flex-shrink: 0; font: normal .85rem var(--sh-mono); letter-spacing: .08rem; text-transform: uppercase; color: var(--sh-rail-muted); }
+.shopper-bts__mail.is-on em { color: var(--sh-sage); }
+
 /* ---------- the room, built at the top of the page ---------- */
 /* While the room is up it replaces the homepage sections; header and footer stay. */
 main.shopper-has-room > .shopify-section { display: none; }

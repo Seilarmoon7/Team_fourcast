@@ -29,6 +29,29 @@
     <div class="shopper-strip__lamp" data-p="shopify"><span></span>Shopify</div>
   </div>
   <div class="shopper-strip__ticker" data-ticker>idle · waiting for a shopper</div>
+  <button type="button" class="shopper-strip__bts" data-bts aria-expanded="false" aria-controls="ShopperBts">Behind the scenes <b>▴</b></button>
+</div>
+
+<div class="shopper-bts" id="ShopperBts" data-bts-panel aria-label="Behind the scenes" role="region" inert>
+  <section class="shopper-bts__sec">
+    <h4>Platforms · live</h4>
+    <div class="shopper-bts__lamp" data-p="google"><span></span><b>Google Gemini</b><em>idle</em></div>
+    <div class="shopper-bts__lamp" data-p="databricks"><span></span><b>Databricks</b><em>idle</em></div>
+    <div class="shopper-bts__lamp" data-p="bloomreach"><span></span><b>Bloomreach</b><em>idle</em></div>
+    <div class="shopper-bts__lamp" data-p="shopify"><span></span><b>Shopify</b><em>idle</em></div>
+  </section>
+  <section class="shopper-bts__sec">
+    <h4>Customer profile</h4>
+    <div data-bts-profile></div>
+  </section>
+  <section class="shopper-bts__sec">
+    <h4>Agent tool calls · last turn</h4>
+    <div class="shopper-bts__trace" data-bts-trace></div>
+  </section>
+  <section class="shopper-bts__sec">
+    <h4>Post-purchase journey</h4>
+    <div data-bts-journey></div>
+  </section>
 </div>
 
 <script src="{{ 'shopper.js' | asset_url }}" defer></script>
