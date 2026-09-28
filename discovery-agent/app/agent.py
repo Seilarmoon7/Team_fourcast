@@ -138,6 +138,11 @@ class Toolbox:
     # -- helpers ---------------------------------------------------------------------------------
     def _profile_data(self) -> dict:
         if self._profile is None:
+            if self.j.profile_cache is not None:
+                # Already fetched earlier this journey (Databricks/Bloomreach round trip is
+                # 10s worst case) - reuse it instead of paying that cost on every turn.
+                self._profile = self.j.profile_cache
+                return self._profile
             persona = PERSONAS.get(self.j.persona or "")
             self._profile = self.features.get(self.j.email)
             if persona and "databricks" not in self._profile.get("source", []):
@@ -148,6 +153,7 @@ class Toolbox:
             if persona and persona.get("history"):
                 self._profile.setdefault("history", persona["history"])
             self._profile.update(value_tier(self._profile))
+            self.j.profile_cache = self._profile
         return self._profile
 
     def _offer(self) -> dict | None:
